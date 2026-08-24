@@ -1,0 +1,110 @@
+{
+  "description": "Shared protocol fixtures for cookie-share-next. Both the server suite and the extension crypto suite must pass every case. Regenerate with: node contract/generate-vectors.mjs",
+  "version": 1,
+  "iterations": 100000,
+  "password": "vector-bucket-password",
+  "bucket": {
+    "envelope": {
+      "version": 1,
+      "salt": "ERITFBUWFxgZGhscHR4fIA",
+      "iv": "QUJDREVGR0hJSktM",
+      "payload": "EbibnZJWt78yyql271eIAVq7J6fdmEQ8FJk9l3qtOzNg2hmhXFrw2Kv1Swnp2ct7cN14WKxi1yrrmRT8Sq3WGu-jQuSBJYh-SCJu2GRLvbwqVlv-qKZtjhFQYoe5n2jYaPQ_kbmPldqosfpl_FcG6Hrx3jskoR58QdeZGlO-FLvQPmO5GVEhXbpzFyHdjPPRcW3MhR49U80cIaMbZ7r3VPFsSfJsKsHZhe_H3NF_9gxlAKRJ6xBH8gf7Hq2Y_mf6ap_EO_7_CMNOB2EQdqzIV2eDcjD1HRi4F9KDvk8DoBgHuTJ9hCYXX0MfMcUGsx-gB5apNWSUiVZ0jYC1favKn4GAL_YaZy6bYv5yFuMKytAKDNW2JVp7n7Z0R_Kah3MoaP9kGC6gCLxYXdHG1uBvzZdNruwde4dH91sPakBzPZxi3zmwfTooN-TaLl98TGoS-34AYN_yYIt_F9vmssxQfhe73srkM4sPIQ"
+    },
+    "plaintext": {
+      "v": 1,
+      "bucketId": "vectorBucket1",
+      "name": "Vector Bucket",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z",
+      "cookies": [
+        {
+          "domain": "example.com",
+          "expirationDate": 1893456000,
+          "hostOnly": false,
+          "httpOnly": true,
+          "name": "session",
+          "path": "/",
+          "sameSite": "lax",
+          "secure": true,
+          "session": false,
+          "storeId": null,
+          "value": "token-value"
+        }
+      ]
+    }
+  },
+  "bucketFile": {
+    "format": "cookie-share-next/bucket",
+    "version": 1,
+    "exportedAt": "2026-01-01T00:00:00.000Z",
+    "envelope": {
+      "version": 1,
+      "salt": "ERITFBUWFxgZGhscHR4fIA",
+      "iv": "QUJDREVGR0hJSktM",
+      "payload": "EbibnZJWt78yyql271eIAVq7J6fdmEQ8FJk9l3qtOzNg2hmhXFrw2Kv1Swnp2ct7cN14WKxi1yrrmRT8Sq3WGu-jQuSBJYh-SCJu2GRLvbwqVlv-qKZtjhFQYoe5n2jYaPQ_kbmPldqosfpl_FcG6Hrx3jskoR58QdeZGlO-FLvQPmO5GVEhXbpzFyHdjPPRcW3MhR49U80cIaMbZ7r3VPFsSfJsKsHZhe_H3NF_9gxlAKRJ6xBH8gf7Hq2Y_mf6ap_EO_7_CMNOB2EQdqzIV2eDcjD1HRi4F9KDvk8DoBgHuTJ9hCYXX0MfMcUGsx-gB5apNWSUiVZ0jYC1favKn4GAL_YaZy6bYv5yFuMKytAKDNW2JVp7n7Z0R_Kah3MoaP9kGC6gCLxYXdHG1uBvzZdNruwde4dH91sPakBzPZxi3zmwfTooN-TaLl98TGoS-34AYN_yYIt_F9vmssxQfhe73srkM4sPIQ"
+    }
+  },
+  "invalidEnvelopes": [
+    {},
+    {
+      "version": 2,
+      "salt": "AAAA",
+      "iv": "AAAA",
+      "payload": "AAAA"
+    },
+    {
+      "version": 1,
+      "salt": "AAAA",
+      "iv": "AAAA"
+    },
+    {
+      "version": 1,
+      "salt": 1,
+      "iv": "AAAA",
+      "payload": "AAAA"
+    },
+    "not-an-object"
+  ],
+  "ids": {
+    "valid": [
+      "a",
+      "ABC123xyz",
+      "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+    ],
+    "invalid": [
+      "",
+      "bad-id!",
+      "with space",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "under_score"
+    ]
+  },
+  "usernames": {
+    "valid": [
+      "alice",
+      "alice_01",
+      "a-b.c",
+      "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    ],
+    "invalid": [
+      "",
+      "ab",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "has space",
+      "has@symbol",
+      "中文"
+    ]
+  },
+  "passwords": {
+    "valid": [
+      "12345678",
+      "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "with space"
+    ],
+    "invalid": [
+      "",
+      "short",
+      "1234567"
+    ]
+  }
+}

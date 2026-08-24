@@ -1,0 +1,9 @@
+export const ENVELOPE_VERSION = 1;
+export const PBKDF2_ITERATIONS = 100000;
+export const AES_KEY_LENGTH = 256;
+export const SALT_LENGTH = 16;
+export const IV_LENGTH = 12;
+export const AUTH_TAG_LENGTH = 16;
+export const BUCKET_FILE_FORMAT = "cookie-share-next/bucket";
+export const BUCKET_FILE_VERSION = 1;
+export const BUCKET_ID_PATTERN = /^[A-Za-z0-9]{1,64}$/;

@@ -1,0 +1,38 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
+  background: #161513;
+  color: #f4eee6;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; min-width: 390px; max-width: 480px; min-height: 420px; }
+button, input { font: inherit; }
+button { border: 0; border-radius: 8px; padding: 9px 12px; cursor: pointer; background: #e0a458; color: #1e1710; font-weight: 700; }
+button:hover { background: #efb86d; }
+button.secondary { background: #332e28; color: #f4eee6; }
+button.danger { background: #b44a3d; color: #fff; }
+button.icon { padding: 5px 8px; font-size: 12px; }
+input { width: 100%; border: 1px solid #514a41; background: #24211e; color: #f4eee6; border-radius: 8px; padding: 9px; }
+label { display: grid; gap: 6px; font-size: 12px; color: #c8bcae; }
+
+#app { padding: 16px; display: grid; gap: 14px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+h1 { margin: 0; font-size: 18px; }
+h2 { margin: 0; font-size: 15px; }
+form, .stack { display: grid; gap: 12px; }
+.row { display: flex; gap: 8px; align-items: center; }
+.row > * { flex: 1; }
+.notice { border-radius: 8px; padding: 10px; background: #332e28; color: #e8ddd2; font-size: 13px; }
+.notice.error { background: #5b2924; color: #ffd9d2; }
+.usage { height: 7px; overflow: hidden; border-radius: 99px; background: #3a352f; }
+.usage > span { display: block; height: 100%; background: #e0a458; }
+.muted { color: #aba094; font-size: 12px; }
+.bucket-list { display: grid; gap: 8px; }
+.bucket { border: 1px solid #3f3931; background: #211f1c; padding: 10px; border-radius: 9px; display: grid; gap: 8px; }
+.bucket-title { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cookie-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.cookie-table th, .cookie-table td { padding: 6px 3px; border-bottom: 1px solid #3f3931; text-align: left; max-width: 95px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cookie-table th:last-child, .cookie-table td:last-child { text-align: right; }
+.empty { padding: 24px 8px; color: #aba094; text-align: center; }

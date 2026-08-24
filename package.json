@@ -1,0 +1,13 @@
+{
+  "name": "cookie-share-next-extension",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "e2e": "node e2e/run.mjs"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.1"
+  }
+}
