@@ -1,0 +1,44 @@
+name: Release extension
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Package and publish extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test extension
+        run: npm test
+
+      - name: Validate release version
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          manifest_version="$(node -e "process.stdout.write(JSON.parse(require('node:fs').readFileSync('manifest.json')).version)")"
+          test "$GITHUB_REF_NAME" = "$version"
+          test "$manifest_version" = "$version"
+          printf 'VERSION=%s\n' "$version" >> "$GITHUB_ENV"
+
+      - name: Package unpacked extension
+        run: zip -r "Cookie-Share-Next-${VERSION}.zip" manifest.json src LICENSE
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$VERSION" "Cookie-Share-Next-${VERSION}.zip" --title "Cookie Share Next $VERSION" --generate-notes
