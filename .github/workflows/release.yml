@@ -41,4 +41,11 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "v$VERSION" "Cookie-Share-Next-${VERSION}.zip" --title "Cookie Share Next $VERSION" --generate-notes
+        run: |
+          tag="v$VERSION"
+          asset="Cookie-Share-Next-${VERSION}.zip"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$asset" --clobber
+          else
+            gh release create "$tag" "$asset" --title "Cookie Share Next $VERSION" --generate-notes
+          fi
