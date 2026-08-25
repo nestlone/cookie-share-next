@@ -39,8 +39,12 @@ describe("extension crypto contract", () => {
   it("round-trips fresh encrypted envelopes", async () => {
     const plaintext = { v: 1, bucketId: "bucketOne", name: "Private", cookies: [] };
     const envelope = await encryptEnvelope("strong-bucket-password", plaintext);
-    expect(envelope).toMatchObject({ version: 1 });
+    expect(envelope).toMatchObject({ version: 2 });
     await expect(decryptEnvelope("strong-bucket-password", envelope)).resolves.toEqual(plaintext);
+  });
+
+  it("continues to decrypt legacy version 1 envelopes", async () => {
+    await expect(decryptEnvelope(vectors.password, vectors.bucket.envelope)).resolves.toEqual(vectors.bucket.plaintext);
   });
 
   it("re-encrypts an unlocked bucket without retaining its password", async () => {

@@ -1,5 +1,7 @@
-export const ENVELOPE_VERSION = 1;
-export const PBKDF2_ITERATIONS = 100000;
+export const ENVELOPE_VERSION = 2;
+export const LEGACY_ENVELOPE_VERSION = 1;
+export const PBKDF2_ITERATIONS = 600000;
+export const LEGACY_PBKDF2_ITERATIONS = 100000;
 export const AES_KEY_LENGTH = 256;
 export const SALT_LENGTH = 16;
 export const IV_LENGTH = 12;

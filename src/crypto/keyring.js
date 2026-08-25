@@ -55,7 +55,7 @@ export async function createAndUnlockBucket(bucketId, plaintextOrPassword, legac
   const password = legacyPlaintext === undefined ? await vaultPassword() : plaintextOrPassword;
   const plaintext = legacyPlaintext === undefined ? plaintextOrPassword : legacyPlaintext;
   const { envelope, key, salt } = await createEncryptedBucket(password, plaintext);
-  entries.set(bucketId, { key, salt });
+  entries.set(bucketId, { key, salt, version: envelope.version });
   return envelope;
 }
 
@@ -66,7 +66,7 @@ export async function unlockBucket(bucketId, envelopeOrPassword, legacyEnvelope)
 
 export async function unlockBucketWithPassword(bucketId, password, envelope) {
   const { key, salt, plaintext } = await unlockEncryptedBucket(password, envelope);
-  entries.set(bucketId, { key, salt });
+  entries.set(bucketId, { key, salt, version: envelope.version });
   return plaintext;
 }
 
@@ -75,5 +75,5 @@ export async function encryptUnlockedBucket(bucketId, plaintext) {
   if (!entry) {
     throw new Error("Bucket is locked");
   }
-  return await encryptWithKey(entry.key, entry.salt, plaintext);
+  return await encryptWithKey(entry.key, entry.salt, plaintext, entry.version);
 }

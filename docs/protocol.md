@@ -24,7 +24,7 @@ Every encrypted blob uses the same envelope:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "salt": "<base64url-encoded 16 bytes>",
   "iv":   "<base64url-encoded 12 bytes>",
   "payload": "<base64url-encoded ciphertext + 16-byte auth tag>"
@@ -36,7 +36,7 @@ Every encrypted blob uses the same envelope:
 | Parameter | Value |
 |---|---|
 | Key derivation | PBKDF2-SHA256 |
-| Iterations | 100000 |
+| Iterations | 600000 (version 2); 100000 for readable version-1 legacy envelopes |
 | Derived key length | 256 bits (32 bytes) |
 | Symmetric cipher | AES-256-GCM |
 | Salt length | 16 bytes |
@@ -49,6 +49,10 @@ Every encrypted blob uses the same envelope:
 ```
 key = PBKDF2-SHA256(password, salt, iterations, 32 bytes)
 ```
+
+Version 2 is the default for newly encrypted buckets. Version 1 is retained
+only for backwards-compatible decryption and is never produced by a current
+client unless explicitly requested by a legacy migration tool.
 
 ### Encryption
 
