@@ -20,7 +20,11 @@ import {
   clearKeyring,
   createAndUnlockBucket,
   encryptUnlockedBucket,
+  hasVaultPassword,
+  lockVault,
+  unlockVault,
   unlockBucket,
+  unlockBucketWithPassword,
 } from "../crypto/keyring.js";
 import { createBucketId } from "../shared/id.js";
 import { clearSession, getSettings, saveSession } from "../store/settings.js";
@@ -67,7 +71,7 @@ async function signIn(serverUrl, provider, mode = "login") {
   if (!code) throw new Error("OAuth sign-in did not return an exchange code");
   const response = await exchangeOAuth(serverUrl, code);
   await saveSession({ serverUrl, displayName: response.user.displayName, token: response.token });
-  clearKeyring();
+  await clearKeyring();
   openDocuments.clear();
   return response;
 }
@@ -98,7 +102,7 @@ async function handleMessage(message) {
         }
       } finally {
         await clearSession();
-        clearKeyring();
+        await clearKeyring();
         openDocuments.clear();
       }
       return null;
@@ -109,6 +113,18 @@ async function handleMessage(message) {
       return await getMe(settings.serverUrl, settings.token);
     }
 
+    case "vault:status":
+      return { unlocked: await hasVaultPassword() };
+
+    case "vault:unlock":
+      await unlockVault(message.password);
+      return { unlocked: true };
+
+    case "vault:lock":
+      await lockVault();
+      openDocuments.clear();
+      return { unlocked: false };
+
     case "bucket:list": {
       const settings = await requireSession();
       return await listBuckets(settings.serverUrl, settings.token);
@@ -118,7 +134,7 @@ async function handleMessage(message) {
       const settings = await requireSession();
       const id = createBucketId();
       const document = createBucketDocument(id, message.name);
-      const envelope = await createAndUnlockBucket(id, message.password, document);
+      const envelope = await createAndUnlockBucket(id, document);
       try {
         const bucket = await createBucket(settings.serverUrl, settings.token, id, envelope);
         openDocuments.set(id, document);
@@ -132,10 +148,18 @@ async function handleMessage(message) {
     case "bucket:open": {
       const settings = await requireSession();
       const bucket = await getBucket(settings.serverUrl, settings.token, message.id);
-      const document = validateBucketDocument(
-        await unlockBucket(message.id, message.password, bucket.envelope),
-        message.id,
-      );
+      let plaintext;
+      try {
+        plaintext = await unlockBucket(message.id, bucket.envelope);
+      } catch (error) {
+        if (typeof message.legacyPassword !== "string" || !message.legacyPassword) throw error;
+        plaintext = await unlockBucketWithPassword(message.id, message.legacyPassword, bucket.envelope);
+        const migrated = validateBucketDocument(plaintext, message.id);
+        await createAndUnlockBucket(message.id, migrated);
+        await updateBucket(settings.serverUrl, settings.token, message.id, await encryptUnlockedBucket(message.id, migrated));
+        plaintext = migrated;
+      }
+      const document = validateBucketDocument(plaintext, message.id);
       openDocuments.set(message.id, document);
       return { bucket, document };
     }
@@ -189,7 +213,7 @@ async function handleMessage(message) {
         throw new Error("Invalid bucket file");
       }
       const file = parseBucketFile(parsed);
-      const imported = await unlockBucket("import-preview", message.password, file.envelope);
+      const imported = await unlockBucketWithPassword("import-preview", message.password, file.envelope);
       const source = validateBucketDocument(imported, imported.bucketId);
       clearBucketKey("import-preview");
 
@@ -198,7 +222,7 @@ async function handleMessage(message) {
         ...createBucketDocument(id, message.name || source.name, source.cookies),
         createdAt: source.createdAt,
       };
-      const envelope = await createAndUnlockBucket(id, message.password, document);
+      const envelope = await createAndUnlockBucket(id, document);
       try {
         const bucket = await createBucket(settings.serverUrl, settings.token, id, envelope);
         openDocuments.set(id, document);
