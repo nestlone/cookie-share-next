@@ -288,6 +288,16 @@ async function handleMessage(message) {
       return result;
     }
 
+    case "bucket:rename": {
+      const settings = await requireSession();
+      if (typeof message.name !== "string" || !message.name.trim()) throw new Error("Bucket name is required");
+      const { document } = await openBucket(settings, message.id, message.legacyPassword);
+      const renamed = { ...document, name: message.name.trim(), updatedAt: new Date().toISOString() };
+      const result = await saveOpenDocument(settings, renamed);
+      await addDirectoryEntry(settings, renamed);
+      return result;
+    }
+
     case "bucket:capture": {
       const settings = await requireSession();
       const site = await currentSite();

@@ -11,7 +11,19 @@ async function render() {
   for (const bucket of list.buckets) {
     const row = el("article", "", "bucket"); const copy = el("div", "", "copy");
     copy.append(el("strong", bucket.name || bucket.id), el("span", `${Math.round(bucket.size / 1024)} KB · ${new Date(bucket.updatedAt).toLocaleString()}`));
-    row.append(copy, button("删除", async () => { if (confirm(`删除“${bucket.name || bucket.id}”？`)) { await send("bucket:delete", { id: bucket.id }); await render(); } }, "danger")); listNode.append(row);
+    const actions = el("div", "", "actions");
+    actions.append(button("重命名", async () => {
+      const name = prompt("新的账号名称", bucket.name || "");
+      if (!name?.trim()) return;
+      if (!(await send("vault:status")).unlocked) {
+        const password = prompt("输入总密码以解锁 Cookie 桶");
+        if (!password) return;
+        await send("vault:unlock", { password });
+      }
+      await send("bucket:rename", { id: bucket.id, name });
+      await render();
+    }, "secondary"), button("删除", async () => { if (confirm(`删除“${bucket.name || bucket.id}”？`)) { await send("bucket:delete", { id: bucket.id }); await render(); } }, "danger"));
+    row.append(copy, actions); listNode.append(row);
   }
   const header = el("header", "", "header"); const title = el("div"); title.append(el("h1", "Cookie Share Next 设置"), el("p", `${me.user.displayName} · ${vault.unlocked ? "Cookie 桶已解锁" : "Cookie 桶已锁定"}`));
   header.append(title, button("退出登录", async () => { await send("auth:logout"); await render(); }, "secondary"));

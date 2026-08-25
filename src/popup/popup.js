@@ -2,6 +2,7 @@ import { getSettings } from "../store/settings.js";
 
 const app = document.querySelector("#app");
 let notice = null;
+let editingAccountId = null;
 const message = (action, payload = {}) => new Promise((resolve, reject) => chrome.runtime.sendMessage({ action, ...payload }, (response) => {
   if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
   if (!response?.ok) return reject(new Error(response?.error ?? "Extension request failed"));
@@ -24,7 +25,19 @@ function renderLogin(settings) {
   load();
 }
 
-function accountRow(bucket) { const label = bucket.name || "未命名账号"; return element("article", { className: "account-row" }, [element("div", { className: "account-copy" }, [element("strong", { text: label }), element("span", { text: `更新于 ${new Date(bucket.updatedAt).toLocaleDateString()}` })]), element("div", { className: "account-actions" }, [button("切换", () => run(async () => { await ensureVaultUnlocked(); await message("site:switch", { id: bucket.id }); notice = { text: `已切换到 ${label}，页面正在刷新`, error: false }; await refresh(); })), button("删除", () => run(async () => { if (!confirm(`删除账号“${label}”？`)) return; await message("bucket:delete", { id: bucket.id }); await refresh(); }), "secondary compact")])]); }
+function accountRow(bucket) {
+  const label = bucket.name || "未命名账号";
+  const editing = editingAccountId === bucket.id;
+  const actions = [
+    button("切换", () => run(async () => { await ensureVaultUnlocked(); await message("site:switch", { id: bucket.id }); notice = { text: `已切换到 ${label}，页面正在刷新`, error: false }; await refresh(); })),
+    button(editing ? "收起" : "编辑", () => { editingAccountId = editing ? null : bucket.id; refresh(); }, "secondary compact"),
+  ];
+  const advanced = editing ? element("div", { className: "account-editor" }, [
+    button("重命名", () => run(async () => { const name = prompt("新的账号名称", label); if (!name?.trim()) return; await ensureVaultUnlocked(); await message("bucket:rename", { id: bucket.id, name }); editingAccountId = null; await refresh(); }), "secondary compact"),
+    button("删除账号", () => run(async () => { if (!confirm(`删除账号“${label}”？`)) return; await message("bucket:delete", { id: bucket.id }); editingAccountId = null; await refresh(); }), "danger compact"),
+  ]) : null;
+  return element("article", { className: "account-row" }, [element("div", { className: "account-copy" }, [element("strong", { text: label }), element("span", { text: `更新于 ${new Date(bucket.updatedAt).toLocaleDateString()}` })]), element("div", { className: "account-actions" }, actions), advanced]);
+}
 
 function renderCurrent(result, vault) {
   const { site, buckets, locked } = result;
