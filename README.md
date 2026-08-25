@@ -6,20 +6,29 @@ Cookie Share Next is a Manifest V3 browser extension for managing encrypted Cook
 
 ## Features
 
-- Create, unlock, capture, edit, delete, and apply Cookie buckets.
+- Detect the active website and show only accounts saved for that exact site.
+- Save the current account, switch an account after clearing the current site's Cookies, and refresh the tab.
+- Use local GitHub page metadata, when available, to suggest an account name such as `github.com · octocat`.
+- Manage all encrypted buckets, rename entries, and reset the vault from the separate Settings page.
 - Read and restore HTTPOnly Cookies where Chromium grants the extension access.
-- Encrypt every bucket locally with its own password before synchronization.
-- Export and import encrypted `.csn-bucket.json` files for file-based sharing.
+- Encrypt bucket contents and directory metadata locally before synchronization.
+- Import encrypted `.csn-bucket.json` files; saved site bindings are retained, and older files derive a binding from their Cookie domains.
 - Sign in with GitHub, Google, or LinuxDo OAuth through a compatible backend.
 - Use the official service at `https://cookie.nestlone.com` or a compatible self-hosted backend.
 
 ## Security and privacy
 
-A bucket password is independent of account authentication and never leaves the extension. The extension derives a local AES-256-GCM key with PBKDF2-SHA256; the service stores opaque encrypted envelopes, bucket IDs, ciphertext sizes, and timestamps only.
+A vault password is independent of account authentication and never leaves the extension. New buckets use PBKDF2-SHA256 with 600,000 iterations and AES-256-GCM; version-1 buckets remain readable for compatibility. The service stores opaque encrypted envelopes, bucket IDs, ciphertext sizes, and timestamps only.
 
 Operators can observe account identities, bucket counts, approximate ciphertext sizes, and request timing. They cannot decrypt bucket names, Cookie domains, Cookie values, or bucket passwords from stored data. Email addresses reported by different OAuth providers are never merged automatically. See the complete [protocol and threat model](docs/protocol.md).
 
-Treat an exported bucket file and its password as separate secrets. Send them through different secure channels. Sharing a bucket password cannot be selectively revoked; create a new bucket with a new password when access must be withdrawn.
+The sign-in token is held in `chrome.storage.session`, not persistent extension storage. Closing the browser ends the extension session and requires signing in again. Treat an exported bucket file and its password as separate secrets.
+
+## Daily use and vault reset
+
+Open the extension on an HTTP(S) page, unlock the vault, and select **Save current account**. The popup then shows only accounts associated with that site. **Switch** removes the current site's Cookies, restores the selected encrypted account, and refreshes the active tab.
+
+Use **Settings** for all-bucket management and renaming. **Delete all encrypted data and reset vault password** is a destructive operation: it requires typing `DELETE`, permanently removes every encrypted bucket from the server, locks the vault, and lets you choose a new vault password the next time you save an account. It does not delete your server sign-in account.
 
 ## Install the extension
 
@@ -30,9 +39,9 @@ This project currently ships as an unpacked native extension; no production bund
 3. Enable **Developer mode**.
 4. Select **Load unpacked** and choose this repository directory (`frontend/` in the local workspace).
 5. Open the popup, keep `https://cookie.nestlone.com` or enter your self-hosted HTTPS origin, and sign in with an enabled OAuth provider.
-6. Create a bucket and assign a strong, unique bucket password.
+6. Unlock the vault with a strong, unique password and save an account from a website.
 
-The extension requests `cookies`, `storage`, `tabs`, `downloads`, and `identity`, plus host access to all URLs. These permissions are required to capture, store, restore, and authenticate Cookie buckets. Review the source before installing it in a sensitive browser profile.
+The extension requests `cookies`, `storage`, `tabs`, `downloads`, `identity`, and `scripting`, plus host access to all URLs. `scripting` is used locally for supported-site account-name detection; no Cookie or credential plaintext is sent to the service. Review the source before installing it in a sensitive browser profile.
 
 ## Use a self-hosted backend
 
