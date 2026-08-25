@@ -11,6 +11,7 @@ import {
   unlinkOAuth,
   updateBucket,
 } from "../api/endpoints.js";
+import { ApiError } from "../api/client.js";
 import { createBucketDocument, validateBucketDocument, withCookies } from "../bucket/model.js";
 import { captureActiveTab } from "../cookies/capture.js";
 import { applyCookies } from "../cookies/apply.js";
@@ -30,6 +31,53 @@ import { createBucketId } from "../shared/id.js";
 import { clearSession, getSettings, saveSession } from "../store/settings.js";
 
 const openDocuments = new Map();
+const DIRECTORY_BUCKET_ID = "vaultindex";
+
+function emptyDirectory() {
+  return { v: 1, type: "bucket-index", buckets: {} };
+}
+
+function validateDirectory(value) {
+  if (!value || typeof value !== "object" || value.v !== 1 || value.type !== "bucket-index" || !value.buckets || typeof value.buckets !== "object" || Array.isArray(value.buckets)) throw new Error("Invalid encrypted bucket directory");
+  return value;
+}
+
+async function loadDirectory(settings) {
+  try {
+    const bucket = await getBucket(settings.serverUrl, settings.token, DIRECTORY_BUCKET_ID);
+    return validateDirectory(await unlockBucket(DIRECTORY_BUCKET_ID, bucket.envelope));
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 404) throw error;
+    const directory = emptyDirectory();
+    await createBucket(settings.serverUrl, settings.token, DIRECTORY_BUCKET_ID, await createAndUnlockBucket(DIRECTORY_BUCKET_ID, directory));
+    return directory;
+  }
+}
+
+async function saveDirectory(settings, directory) {
+  await updateBucket(settings.serverUrl, settings.token, DIRECTORY_BUCKET_ID, await encryptUnlockedBucket(DIRECTORY_BUCKET_ID, directory));
+}
+
+async function addDirectoryEntry(settings, document) {
+  const directory = await loadDirectory(settings);
+  directory.buckets[document.bucketId] = { name: document.name, updatedAt: document.updatedAt };
+  await saveDirectory(settings, directory);
+}
+
+async function hydrateDirectory(settings, summaries, directory) {
+  if (Object.keys(directory.buckets).length > 0 || summaries.length === 0) return directory;
+  for (const summary of summaries) {
+    try {
+      const bucket = await getBucket(settings.serverUrl, settings.token, summary.id);
+      const document = validateBucketDocument(await unlockBucket(summary.id, bucket.envelope), summary.id);
+      directory.buckets[summary.id] = { name: document.name, updatedAt: document.updatedAt };
+    } catch {
+      // Older individually-password-protected buckets remain unnamed until migrated on open.
+    }
+  }
+  await saveDirectory(settings, directory);
+  return directory;
+}
 
 function errorMessage(error) {
   return error instanceof Error ? error.message : "Unexpected error";
@@ -127,7 +175,11 @@ async function handleMessage(message) {
 
     case "bucket:list": {
       const settings = await requireSession();
-      return await listBuckets(settings.serverUrl, settings.token);
+      const response = await listBuckets(settings.serverUrl, settings.token);
+      const buckets = response.buckets.filter((bucket) => bucket.id !== DIRECTORY_BUCKET_ID);
+      if (!await hasVaultPassword()) return { buckets };
+      const directory = await hydrateDirectory(settings, buckets, await loadDirectory(settings));
+      return { buckets: buckets.map((bucket) => ({ ...bucket, name: directory.buckets[bucket.id]?.name ?? bucket.id })) };
     }
 
     case "bucket:create": {
@@ -137,6 +189,7 @@ async function handleMessage(message) {
       const envelope = await createAndUnlockBucket(id, document);
       try {
         const bucket = await createBucket(settings.serverUrl, settings.token, id, envelope);
+        await addDirectoryEntry(settings, document);
         openDocuments.set(id, document);
         return { bucket, document };
       } catch (error) {
@@ -170,7 +223,9 @@ async function handleMessage(message) {
     case "bucket:save": {
       const settings = await requireSession();
       const document = validateBucketDocument(message.document, message.id);
-      return await saveOpenDocument(settings, document);
+      const result = await saveOpenDocument(settings, document);
+      await addDirectoryEntry(settings, document);
+      return result;
     }
 
     case "bucket:capture": {
@@ -187,6 +242,11 @@ async function handleMessage(message) {
     case "bucket:delete": {
       const settings = await requireSession();
       await deleteBucket(settings.serverUrl, settings.token, message.id);
+      if (await hasVaultPassword()) {
+        const directory = await loadDirectory(settings);
+        delete directory.buckets[message.id];
+        await saveDirectory(settings, directory);
+      }
       clearBucketKey(message.id);
       openDocuments.delete(message.id);
       return null;
@@ -225,6 +285,7 @@ async function handleMessage(message) {
       const envelope = await createAndUnlockBucket(id, document);
       try {
         const bucket = await createBucket(settings.serverUrl, settings.token, id, envelope);
+        await addDirectoryEntry(settings, document);
         openDocuments.set(id, document);
         return { bucket, document };
       } catch (error) {

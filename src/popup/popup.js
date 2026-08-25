@@ -172,7 +172,7 @@ function renderBucketItem(bucket) {
   }, "secondary");
   return element("article", { className: "bucket" }, [
     element("div", { className: "bucket-copy" }, [
-      element("div", { className: "bucket-title", title: bucket.id, text: bucket.id }),
+      element("div", { className: "bucket-title", title: bucket.id, text: bucket.name ?? bucket.id }),
       element("div", { className: "bucket-meta", text: `${formatBytes(bucket.size)} · 更新于 ${new Date(bucket.updatedAt).toLocaleString()}` }),
     ]),
     element("div", { className: "bucket-actions" }, [open, exportButton]),
