@@ -179,7 +179,7 @@ function renderBucketItem(bucket) {
   ]);
 }
 
-function renderDashboard(me, buckets, configuredProviders) {
+function renderDashboard(me, buckets, configuredProviders, vault) {
   currentDocument = null;
   const usage = me.usage;
   const percentage = me.user.quotaBytes === 0 ? 0 : Math.min(100, usage.usedBytes / me.user.quotaBytes * 100);
@@ -201,8 +201,12 @@ function renderDashboard(me, buckets, configuredProviders) {
       renderLogin(settings);
     });
   }, "secondary compact");
-  const lockButton = button("锁定", async () => {
-    await run(async () => { await message("vault:lock"); await refreshDashboard(); });
+  const lockButton = button(vault.unlocked ? "锁定" : "解锁", async () => {
+    await run(async () => {
+      if (vault.unlocked) await message("vault:lock");
+      else await ensureVaultUnlocked();
+      await refreshDashboard();
+    });
   }, "secondary compact");
   const meter = element("div", {
     className: "usage",
@@ -259,12 +263,13 @@ function renderDashboard(me, buckets, configuredProviders) {
 
 async function refreshDashboard() {
   const settings = await getSettings();
-  const [me, list, providerResponse] = await Promise.all([
+  const [me, list, providerResponse, vault] = await Promise.all([
     message("auth:status"),
     message("bucket:list"),
     message("auth:providers", { serverUrl: settings.serverUrl }),
+    message("vault:status"),
   ]);
-  renderDashboard(me, list.buckets, providerResponse.providers);
+  renderDashboard(me, list.buckets, providerResponse.providers, vault);
 }
 
 function downloadFile(content, filename) {
