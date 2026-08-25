@@ -1,5 +1,20 @@
 const SAME_SITE_VALUES = new Set(["lax", "strict", "none"]);
 
+function normalizeDomain(value) {
+  const domain = value.trim().replace(/^\./, "").toLowerCase();
+  if (!domain || /[\s/@:?#[\]\\]/.test(domain)) throw new Error("Invalid cookie domain");
+  let parsed;
+  try { parsed = new URL(`https://${domain}`); } catch { throw new Error("Invalid cookie domain"); }
+  if (parsed.hostname !== domain || parsed.port || parsed.pathname !== "/" || parsed.search || parsed.hash) throw new Error("Invalid cookie domain");
+  return domain;
+}
+
+function normalizePath(value) {
+  const path = typeof value === "string" && value ? value : "/";
+  if (!path.startsWith("/") || /[\r\n?#]/.test(path)) throw new Error("Invalid cookie path");
+  return path;
+}
+
 function normalizeSameSite(value) {
   if (value === "no_restriction") {
     return "none";
@@ -27,7 +42,7 @@ export function normalizeCookie(cookie) {
     throw new Error("Invalid cookie security flags");
   }
 
-  const domain = cookie.domain.trim().replace(/^\./, "").toLowerCase();
+  const domain = normalizeDomain(cookie.domain);
   const expirationDate = cookie.expirationDate === undefined || cookie.expirationDate === null
     ? undefined
     : Number(cookie.expirationDate);
@@ -40,7 +55,7 @@ export function normalizeCookie(cookie) {
     hostOnly: typeof cookie.hostOnly === "boolean" ? cookie.hostOnly : !cookie.domain.trim().startsWith("."),
     httpOnly: cookie.httpOnly,
     name: cookie.name,
-    path: typeof cookie.path === "string" && cookie.path ? cookie.path : "/",
+    path: normalizePath(cookie.path),
     sameSite: normalizeSameSite(cookie.sameSite),
     secure: cookie.secure,
     session: Boolean(cookie.session),

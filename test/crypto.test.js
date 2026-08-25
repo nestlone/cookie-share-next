@@ -13,6 +13,7 @@ import {
   unlockBucket,
 } from "../src/crypto/keyring.js";
 import { createBucketId, isBucketId } from "../src/shared/id.js";
+import { normalizeCookie } from "../src/cookies/normalize.js";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const vectors = JSON.parse(
@@ -71,5 +72,13 @@ describe("extension crypto contract", () => {
     expect(isBucketId(first)).toBe(true);
     expect(isBucketId(second)).toBe(true);
     expect(first).not.toBe(second);
+  });
+
+  it("rejects malformed cookie domains and paths", () => {
+    const cookie = { name: "session", value: "value", domain: "example.com", path: "/", httpOnly: true, secure: true };
+    for (const domain of ["evil.com:8080", "example.com/../../evil", "https://evil.com"]) {
+      expect(() => normalizeCookie({ ...cookie, domain })).toThrow("Invalid cookie domain");
+    }
+    expect(() => normalizeCookie({ ...cookie, path: "javascript:alert(1)" })).toThrow("Invalid cookie path");
   });
 });

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Cookie Share Next",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAylgyO0MiwZVUpDhRzYF5rw8pHPdYWXQqzVUC9aHBdLoERLCHjOnFZXUuOokkOLRq47FLP55RO6h/3BLPvc9ntMmXSQ7Fw1VmgZAKc+4gciH+0sUjCuN7YLBojhSh2AGCXb34oNIivb4fSSKXJ8T6+SvjpGmFJKVc5CNMbkwKMU96/kKl5eAf6EVAvUVNiynsua4el03QGJIuirf/F0siENM+ePpqovmEH/XuH2tZP+F1+qRD2AYR0pt/rbkXZlyt+2ro1oswI6HSR4z5QHhQL7m5VYKCUFXeI4pGZsvUFYKxsVnHorm21hy6JbnZSNd5oc+UYmC9kWSFLzxSQZ0WhQIDAQAB",
   "description": "Zero-knowledge cookie buckets with client-side encryption.",
   "permissions": ["cookies", "storage", "tabs", "downloads", "identity", "scripting"],

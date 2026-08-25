@@ -27,6 +27,13 @@ async function render() {
   }
   const header = el("header", "", "header"); const title = el("div"); title.append(el("h1", "Cookie Share Next 设置"), el("p", `${me.user.displayName} · ${vault.unlocked ? "Cookie 桶已解锁" : "Cookie 桶已锁定"}`));
   header.append(title, button("退出登录", async () => { await send("auth:logout"); await render(); }, "secondary"));
-  app.replaceChildren(header, el("h2", "全部加密桶"), listNode, el("p", "账号切换请在访问目标网站时使用扩展弹窗。", "muted"));
+  const reset = button("删除全部加密数据并重置总密码", async () => {
+    const confirmation = prompt("此操作会永久删除所有 Cookie 桶和密码数据。输入 DELETE 确认");
+    if (confirmation !== "DELETE") return;
+    await send("vault:reset", { confirmation });
+    alert("已删除全部加密数据。下次保存账号时可设置新的总密码。");
+    await render();
+  }, "danger");
+  app.replaceChildren(header, el("h2", "全部加密桶"), listNode, el("h2", "危险操作"), reset, el("p", "此操作不可撤销，但不会退出服务器账号。", "muted"));
 }
 render().catch((error) => app.replaceChildren(el("p", error.message, "error")));
