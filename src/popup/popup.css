@@ -152,6 +152,16 @@ h3 { font-size: 14px; }
 .bucket-actions { display: flex; flex: 0 0 auto; gap: 6px; }
 .bucket-actions button { min-height: 32px; padding: 6px 9px; font-size: 12px; }
 
+.site-icon { width: 34px; height: 34px; flex: 0 0 auto; border-radius: 8px; object-fit: contain; background: #fff; }
+.site-icon--fallback { display: grid; place-items: center; background: var(--primary); color: var(--primary-text); font-weight: 800; }
+.account-list { display: grid; gap: 8px; }
+.account-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--border); border-radius: var(--radius); padding: 11px; background: var(--surface); }
+.account-copy { display: grid; min-width: 0; gap: 4px; }
+.account-copy strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.account-copy span { color: var(--muted); font-size: 11px; }
+.account-actions { display: flex; flex: 0 0 auto; gap: 6px; }
+.account-actions button { min-height: 32px; padding: 6px 9px; font-size: 12px; }
+
 .empty-state { display: grid; justify-items: center; gap: 6px; border: 1px dashed #40506c; border-radius: var(--radius); padding: 18px 20px; color: var(--muted); text-align: center; }
 .empty-state-art { width: 112px; height: 78px; margin-bottom: 2px; }
 .empty-state p { max-width: 260px; font-size: 12px; line-height: 1.5; }

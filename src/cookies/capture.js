@@ -19,3 +19,15 @@ export async function captureActiveTab() {
   const tab = await getActiveTab();
   return await captureForUrl(tab.url);
 }
+
+export async function activeSiteContext() {
+  const tab = await getActiveTab();
+  const url = new URL(tab.url);
+  return {
+    tabId: tab.id,
+    url: tab.url,
+    hostname: url.hostname.toLowerCase(),
+    title: tab.title || url.hostname,
+    favIconUrl: tab.favIconUrl || "",
+  };
+}

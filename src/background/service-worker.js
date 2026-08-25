@@ -13,8 +13,8 @@ import {
 } from "../api/endpoints.js";
 import { ApiError } from "../api/client.js";
 import { createBucketDocument, validateBucketDocument, withCookies } from "../bucket/model.js";
-import { captureActiveTab } from "../cookies/capture.js";
-import { applyCookies } from "../cookies/apply.js";
+import { activeSiteContext, captureActiveTab } from "../cookies/capture.js";
+import { applyCookies, replaceCookiesForUrl } from "../cookies/apply.js";
 import { createBucketFile, parseBucketFile } from "../crypto/bucket-file.js";
 import {
   clearBucketKey,
@@ -35,6 +35,10 @@ const DIRECTORY_BUCKET_ID = "vaultindex";
 
 function emptyDirectory() {
   return { v: 1, type: "bucket-index", buckets: {} };
+}
+
+function directoryEntry(document) {
+  return { name: document.name, updatedAt: document.updatedAt, sites: Array.isArray(document.sites) ? document.sites : [] };
 }
 
 function validateDirectory(value) {
@@ -60,7 +64,7 @@ async function saveDirectory(settings, directory) {
 
 async function addDirectoryEntry(settings, document) {
   const directory = await loadDirectory(settings);
-  directory.buckets[document.bucketId] = { name: document.name, updatedAt: document.updatedAt };
+  directory.buckets[document.bucketId] = directoryEntry(document);
   await saveDirectory(settings, directory);
 }
 
@@ -70,7 +74,7 @@ async function hydrateDirectory(settings, summaries, directory) {
     try {
       const bucket = await getBucket(settings.serverUrl, settings.token, summary.id);
       const document = validateBucketDocument(await unlockBucket(summary.id, bucket.envelope), summary.id);
-      directory.buckets[summary.id] = { name: document.name, updatedAt: document.updatedAt };
+      directory.buckets[summary.id] = directoryEntry(document);
     } catch {
       // Older individually-password-protected buckets remain unnamed until migrated on open.
     }
@@ -124,6 +128,40 @@ async function signIn(serverUrl, provider, mode = "login") {
   return response;
 }
 
+async function currentSite() {
+  const context = await activeSiteContext();
+  if (context.hostname === "github.com") {
+    try {
+      const [result] = await chrome.scripting.executeScript({
+        target: { tabId: context.tabId },
+        func: () => document.querySelector('meta[name="user-login"]')?.getAttribute("content") || "",
+      });
+      if (typeof result?.result === "string" && result.result) context.accountName = result.result;
+    } catch {
+      // The generic site flow remains available when a page blocks script injection.
+    }
+  }
+  return context;
+}
+
+async function openBucket(settings, id, legacyPassword) {
+  const bucket = await getBucket(settings.serverUrl, settings.token, id);
+  let plaintext;
+  try {
+    plaintext = await unlockBucket(id, bucket.envelope);
+  } catch (error) {
+    if (typeof legacyPassword !== "string" || !legacyPassword) throw error;
+    plaintext = await unlockBucketWithPassword(id, legacyPassword, bucket.envelope);
+    const migrated = validateBucketDocument(plaintext, id);
+    await createAndUnlockBucket(id, migrated);
+    await updateBucket(settings.serverUrl, settings.token, id, await encryptUnlockedBucket(id, migrated));
+    plaintext = migrated;
+  }
+  const document = validateBucketDocument(plaintext, id);
+  openDocuments.set(id, document);
+  return { bucket, document };
+}
+
 async function handleMessage(message) {
   switch (message.action) {
     case "auth:providers":
@@ -173,6 +211,9 @@ async function handleMessage(message) {
       openDocuments.clear();
       return { unlocked: false };
 
+    case "site:context":
+      return await currentSite();
+
     case "bucket:list": {
       const settings = await requireSession();
       const response = await listBuckets(settings.serverUrl, settings.token);
@@ -180,6 +221,39 @@ async function handleMessage(message) {
       if (!await hasVaultPassword()) return { buckets };
       const directory = await hydrateDirectory(settings, buckets, await loadDirectory(settings));
       return { buckets: buckets.map((bucket) => ({ ...bucket, name: directory.buckets[bucket.id]?.name ?? bucket.id })) };
+    }
+
+    case "site:buckets": {
+      const settings = await requireSession();
+      const site = await currentSite();
+      if (!await hasVaultPassword()) return { site, buckets: [], locked: true };
+      const response = await listBuckets(settings.serverUrl, settings.token);
+      const buckets = response.buckets.filter((bucket) => bucket.id !== DIRECTORY_BUCKET_ID);
+      const directory = await hydrateDirectory(settings, buckets, await loadDirectory(settings));
+      return { site, locked: false, buckets: buckets.filter((bucket) => directory.buckets[bucket.id]?.sites?.includes(site.hostname)).map((bucket) => ({ ...bucket, ...directory.buckets[bucket.id] })) };
+    }
+
+    case "site:save-current": {
+      const settings = await requireSession();
+      const site = await currentSite();
+      const id = createBucketId();
+      const name = typeof message.name === "string" && message.name.trim() ? message.name.trim() : site.accountName ? `${site.hostname} · ${site.accountName}` : site.hostname;
+      const document = createBucketDocument(id, name, await captureActiveTab(), [site.hostname]);
+      const envelope = await createAndUnlockBucket(id, document);
+      const bucket = await createBucket(settings.serverUrl, settings.token, id, envelope);
+      await addDirectoryEntry(settings, document);
+      openDocuments.set(id, document);
+      return { bucket, document, site };
+    }
+
+    case "site:switch": {
+      const settings = await requireSession();
+      const site = await currentSite();
+      const { document } = await openBucket(settings, message.id, message.legacyPassword);
+      if (!document.sites.includes(site.hostname)) throw new Error("This account is not saved for the current website");
+      const applied = await replaceCookiesForUrl(site.url, document.cookies);
+      await chrome.tabs.reload(site.tabId);
+      return { applied, document, site };
     }
 
     case "bucket:create": {
@@ -200,21 +274,7 @@ async function handleMessage(message) {
 
     case "bucket:open": {
       const settings = await requireSession();
-      const bucket = await getBucket(settings.serverUrl, settings.token, message.id);
-      let plaintext;
-      try {
-        plaintext = await unlockBucket(message.id, bucket.envelope);
-      } catch (error) {
-        if (typeof message.legacyPassword !== "string" || !message.legacyPassword) throw error;
-        plaintext = await unlockBucketWithPassword(message.id, message.legacyPassword, bucket.envelope);
-        const migrated = validateBucketDocument(plaintext, message.id);
-        await createAndUnlockBucket(message.id, migrated);
-        await updateBucket(settings.serverUrl, settings.token, message.id, await encryptUnlockedBucket(message.id, migrated));
-        plaintext = migrated;
-      }
-      const document = validateBucketDocument(plaintext, message.id);
-      openDocuments.set(message.id, document);
-      return { bucket, document };
+      return await openBucket(settings, message.id, message.legacyPassword);
     }
 
     case "bucket:current":
@@ -230,7 +290,8 @@ async function handleMessage(message) {
 
     case "bucket:capture": {
       const settings = await requireSession();
-      const document = withCookies(getOpenDocument(message.id), await captureActiveTab());
+      const site = await currentSite();
+      const document = withCookies(getOpenDocument(message.id), await captureActiveTab(), [site.hostname]);
       return await saveOpenDocument(settings, document);
     }
 

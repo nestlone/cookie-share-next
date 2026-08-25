@@ -5,7 +5,12 @@ function timestamp() {
   return new Date().toISOString();
 }
 
-export function createBucketDocument(bucketId, name, cookies = []) {
+function normalizeSites(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((site) => typeof site === "string" && /^[a-z0-9.-]+$/i.test(site)).map((site) => site.toLowerCase()))];
+}
+
+export function createBucketDocument(bucketId, name, cookies = [], sites = []) {
   if (!isBucketId(bucketId)) {
     throw new Error("Invalid bucket ID");
   }
@@ -20,6 +25,7 @@ export function createBucketDocument(bucketId, name, cookies = []) {
     createdAt: now,
     updatedAt: now,
     cookies: normalizeCookies(cookies),
+    sites: normalizeSites(sites),
   };
 }
 
@@ -40,13 +46,15 @@ export function validateBucketDocument(value, expectedId) {
     createdAt: typeof value.createdAt === "string" ? value.createdAt : timestamp(),
     updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : timestamp(),
     cookies: normalizeCookies(value.cookies),
+    sites: normalizeSites(value.sites),
   };
 }
 
-export function withCookies(bucket, cookies) {
+export function withCookies(bucket, cookies, sites = bucket.sites) {
   return {
     ...bucket,
     updatedAt: timestamp(),
     cookies: normalizeCookies(cookies),
+    sites: normalizeSites(sites),
   };
 }

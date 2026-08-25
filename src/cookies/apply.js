@@ -29,3 +29,10 @@ export async function applyCookies(cookies) {
   }
   return normalized.length;
 }
+
+export async function replaceCookiesForUrl(url, cookies) {
+  const { hostname } = new URL(url);
+  const existing = await chrome.cookies.getAll({ domain: hostname });
+  await Promise.allSettled(existing.map((cookie) => chrome.cookies.remove({ url: cookieUrl(cookie), name: cookie.name, storeId: cookie.storeId })));
+  return await applyCookies(cookies);
+}
