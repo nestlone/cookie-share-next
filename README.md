@@ -9,10 +9,10 @@ Cookie Share Next is a Manifest V3 browser extension for managing encrypted Cook
 - Detect the active website and show only accounts saved for that exact site.
 - Save the current account, switch an account after clearing the current site's Cookies, and refresh the tab.
 - Use local GitHub page metadata, when available, to suggest an account name such as `github.com · octocat`.
-- Manage all encrypted buckets, rename entries, and reset the vault from the separate Settings page.
+- Manage all encrypted buckets, import or export plaintext JSON backups, rename entries, and reset the vault from the separate Settings page.
 - Read and restore HTTPOnly Cookies where Chromium grants the extension access.
 - Encrypt bucket contents and directory metadata locally before synchronization.
-- Import encrypted `.csn-bucket.json` files; saved site bindings are retained, and older files derive a binding from their Cookie domains.
+- Import and export versioned plaintext JSON backups after unlocking the vault. Imported data is validated locally and re-encrypted before synchronization.
 - Sign in with GitHub, Google, or LinuxDo OAuth through a compatible backend.
 - Use the official service at `https://cookie.nestlone.com` or a compatible self-hosted backend.
 
@@ -22,13 +22,13 @@ A vault password is independent of account authentication and never leaves the e
 
 Operators can observe account identities, bucket counts, approximate ciphertext sizes, and request timing. They cannot decrypt bucket names, Cookie domains, Cookie values, or bucket passwords from stored data. Email addresses reported by different OAuth providers are never merged automatically. See the complete [protocol and threat model](docs/protocol.md).
 
-The sign-in token is held in `chrome.storage.session`, not persistent extension storage. Closing the browser ends the extension session and requires signing in again. Treat an exported bucket file and its password as separate secrets.
+The sign-in token is held in `chrome.storage.session`, not persistent extension storage. Closing the browser ends the extension session and requires signing in again. Plaintext exports contain active session credentials: store them only where you trust the storage, and delete them after use.
 
 ## Daily use and vault reset
 
 Open the extension on an HTTP(S) page, unlock the vault, and select **Save current account**. The popup then shows only accounts associated with that site. **Switch** removes the current site's Cookies, restores the selected encrypted account, and refreshes the active tab.
 
-Use **Settings** for all-bucket management and renaming. **Delete all encrypted data and reset vault password** is a destructive operation: it requires typing `DELETE`, permanently removes every encrypted bucket from the server, locks the vault, and lets you choose a new vault password the next time you save an account. It does not delete your server sign-in account.
+Use **Settings** for all-bucket management, renaming, and plaintext JSON import/export. These backup actions require the vault to be unlocked; imports are immediately encrypted with the current vault password before upload. **Delete all encrypted data and reset vault password** is a destructive operation: it requires typing `DELETE`, permanently removes every encrypted bucket from the server, locks the vault, and lets you choose a new vault password the next time you save an account. It does not delete your server sign-in account.
 
 ## Install the extension
 

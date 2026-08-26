@@ -15,7 +15,6 @@ import { ApiError } from "../api/client.js";
 import { createBucketDocument, validateBucketDocument } from "../bucket/model.js";
 import { activeSiteContext, captureActiveTab } from "../cookies/capture.js";
 import { replaceCookiesForUrl } from "../cookies/apply.js";
-import { createBucketFile, parseBucketFile } from "../crypto/bucket-file.js";
 import {
   clearBucketKey,
   clearKeyring,
@@ -315,10 +314,19 @@ async function handleMessage(message) {
 
     case "bucket:export": {
       const settings = await requireSession();
-      const bucket = await getBucket(settings.serverUrl, settings.token, message.id);
+      const { document } = await openBucket(settings, message.id);
       return {
-        content: JSON.stringify(createBucketFile(bucket.envelope), null, 2),
-        filename: `${message.id}.csn-bucket.json`,
+        content: JSON.stringify({
+          format: "cookie-share-next-plaintext",
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          bucket: {
+            name: document.name,
+            cookies: document.cookies,
+            sites: document.sites,
+          },
+        }, null, 2),
+        filename: `${document.name.replace(/[^a-z0-9._-]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 64) || message.id}.cookie-share.json`,
       };
     }
 
@@ -333,16 +341,21 @@ async function handleMessage(message) {
       } catch {
         throw new Error("Invalid bucket file");
       }
-      const file = parseBucketFile(parsed);
-      const imported = await unlockBucketWithPassword("import-preview", message.password, file.envelope);
-      const source = validateBucketDocument(imported, imported.bucketId);
-      clearBucketKey("import-preview");
+      if (parsed?.format !== "cookie-share-next-plaintext" || parsed.version !== 1 || !parsed.bucket || typeof parsed.bucket !== "object" || Array.isArray(parsed.bucket)) {
+        throw new Error("Invalid Cookie Share plaintext export");
+      }
+      const source = parsed.bucket;
+      if (typeof source.name !== "string" || !Array.isArray(source.cookies)) {
+        throw new Error("Invalid Cookie Share plaintext export");
+      }
 
       const id = createBucketId();
-      const document = {
-        ...createBucketDocument(id, message.name || source.name, source.cookies, source.sites.length ? source.sites : source.cookies.map((cookie) => cookie.domain.replace(/^\./, ""))),
-        createdAt: source.createdAt,
-      };
+      const document = createBucketDocument(
+        id,
+        typeof message.name === "string" && message.name.trim() ? message.name : source.name,
+        source.cookies,
+        Array.isArray(source.sites) && source.sites.length ? source.sites : source.cookies.map((cookie) => cookie.domain.replace(/^\./, "")),
+      );
       const envelope = await createAndUnlockBucket(id, document);
       try {
         const bucket = await createBucket(settings.serverUrl, settings.token, id, envelope);
