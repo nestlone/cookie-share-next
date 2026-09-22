@@ -120,19 +120,24 @@ Normalized cookie object (maps to `chrome.cookies.Cookie`):
   "path": "/",
   "secure": true,
   "httpOnly": true,
-  "sameSite": "lax",
+  "sameSite": "unspecified",
   "session": false,
   "expirationDate": 1893456000,
   "hostOnly": false,
-  "storeId": null
+  "storeId": null,
+  "partitionKey": {
+    "topLevelSite": "https://example.com",
+    "hasCrossSiteAncestor": false
+  }
 }
 ```
 
-- `sameSite`: one of `"lax"`, `"strict"`, `"none"` (lowercase).
+- `sameSite`: one of `"unspecified"`, `"lax"`, `"strict"`, `"none"` (lowercase).
 - `session`: boolean. If `true`, `expirationDate` is absent/null.
 - `expirationDate`: number (seconds since epoch, like `chrome.cookies`).
 - `hostOnly`: boolean. If `true`, domain is not prefixed with `.`.
 - `storeId`: always `null` in this protocol (present for `chrome.cookies` compat).
+- `partitionKey`: optional Chrome partitioned-cookie context. It is preserved when available so a site can restore CHIPS/Clerk cookies correctly.
 
 ## Bucket ID
 

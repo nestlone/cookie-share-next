@@ -1,4 +1,4 @@
-const SAME_SITE_VALUES = new Set(["lax", "strict", "none"]);
+const SAME_SITE_VALUES = new Set(["lax", "strict", "none", "unspecified"]);
 
 function normalizeDomain(value) {
   const domain = value.trim().replace(/^\./, "").toLowerCase();
@@ -20,12 +20,32 @@ function normalizeSameSite(value) {
     return "none";
   }
   if (value === "unspecified" || value === undefined || value === null) {
-    return "lax";
+    return "unspecified";
   }
   if (typeof value !== "string" || !SAME_SITE_VALUES.has(value.toLowerCase())) {
     throw new Error("Invalid cookie sameSite value");
   }
   return value.toLowerCase();
+}
+
+function normalizePartitionKey(value) {
+  if (value === undefined || value === null) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid cookie partitionKey");
+  const source = value;
+  const partitionKey = {};
+  if (source.topLevelSite !== undefined) {
+    if (typeof source.topLevelSite !== "string") throw new Error("Invalid cookie partitionKey");
+    let site;
+    try { site = new URL(source.topLevelSite); } catch { throw new Error("Invalid cookie partitionKey"); }
+    if (!/^https?:$/.test(site.protocol) || site.origin !== source.topLevelSite.replace(/\/$/, "")) throw new Error("Invalid cookie partitionKey");
+    partitionKey.topLevelSite = source.topLevelSite.replace(/\/$/, "");
+  }
+  if (source.hasCrossSiteAncestor !== undefined) {
+    if (typeof source.hasCrossSiteAncestor !== "boolean") throw new Error("Invalid cookie partitionKey");
+    partitionKey.hasCrossSiteAncestor = source.hasCrossSiteAncestor;
+  }
+  if (Object.keys(partitionKey).length === 0) throw new Error("Invalid cookie partitionKey");
+  return partitionKey;
 }
 
 export function normalizeCookie(cookie) {
@@ -62,6 +82,8 @@ export function normalizeCookie(cookie) {
     storeId: null,
     value: cookie.value,
   };
+  const partitionKey = normalizePartitionKey(cookie.partitionKey);
+  if (partitionKey) normalized.partitionKey = partitionKey;
   if (expirationDate !== undefined) {
     normalized.expirationDate = expirationDate;
   }

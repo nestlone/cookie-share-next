@@ -81,4 +81,10 @@ describe("extension crypto contract", () => {
     }
     expect(() => normalizeCookie({ ...cookie, path: "javascript:alert(1)" })).toThrow("Invalid cookie path");
   });
+
+  it("preserves partition keys and an unspecified SameSite attribute", () => {
+    const cookie = normalizeCookie({ name: "__clerk_db_jwt", value: "value", domain: "suno.com", path: "/", httpOnly: true, secure: true, sameSite: "unspecified", partitionKey: { topLevelSite: "https://suno.com", hasCrossSiteAncestor: false } });
+    expect(cookie).toMatchObject({ sameSite: "unspecified", partitionKey: { topLevelSite: "https://suno.com", hasCrossSiteAncestor: false } });
+    expect(() => normalizeCookie({ ...cookie, partitionKey: { topLevelSite: "https://suno.com/path" } })).toThrow("Invalid cookie partitionKey");
+  });
 });

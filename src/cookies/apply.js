@@ -14,6 +14,9 @@ function toCookieDetails(cookie) {
   if (!cookie.hostOnly) {
     details.domain = cookie.domain;
   }
+  if (cookie.partitionKey) {
+    details.partitionKey = cookie.partitionKey;
+  }
   if (!cookie.session && cookie.expirationDate !== undefined) {
     details.expirationDate = cookie.expirationDate;
   }
@@ -33,6 +36,6 @@ export async function applyCookies(cookies) {
 export async function replaceCookiesForUrl(url, cookies) {
   const { hostname } = new URL(url);
   const existing = await chrome.cookies.getAll({ domain: hostname });
-  await Promise.allSettled(existing.map((cookie) => chrome.cookies.remove({ url: cookieUrl(cookie), name: cookie.name, storeId: cookie.storeId })));
+  await Promise.allSettled(existing.map((cookie) => chrome.cookies.remove({ url: cookieUrl(cookie), name: cookie.name, storeId: cookie.storeId, ...(cookie.partitionKey ? { partitionKey: cookie.partitionKey } : {}) })));
   return await applyCookies(cookies);
 }
