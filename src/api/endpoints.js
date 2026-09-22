@@ -5,6 +5,8 @@ function client(serverUrl, token) { return new ApiClient(serverUrl, token); }
 export async function getProviders(serverUrl) { return await client(serverUrl).get("/auth/providers"); }
 export async function startOAuth(serverUrl, provider, mode, redirectUri, token) { return await client(serverUrl, token).post(`/auth/oauth/${encodeURIComponent(provider)}/start`, { mode, redirectUri }); }
 export async function exchangeOAuth(serverUrl, code) { return await client(serverUrl).post("/auth/oauth/exchange", { code }); }
+export async function signInWithBackupKey(serverUrl, key) { return await client(serverUrl).post("/auth/backup-key/exchange", { key }); }
+export async function resetBackupKey(serverUrl, token) { return await client(serverUrl, token).post("/auth/backup-key/reset", {}); }
 export async function unlinkOAuth(serverUrl, token, provider) { return await client(serverUrl, token).delete(`/auth/oauth/${encodeURIComponent(provider)}`); }
 export async function logout(serverUrl, token) { return await client(serverUrl, token).post("/auth/logout", {}); }
 export async function getMe(serverUrl, token) { return await client(serverUrl, token).get("/me"); }

@@ -20,8 +20,14 @@ function icon(site) { return site.favIconUrl ? element("img", { className: "site
 function renderLogin(settings) {
   const input = element("input", { type: "url", value: settings.serverUrl || "https://cookie.nestlone.com", placeholder: "https://server.example" });
   const providers = element("div", { className: "provider-actions" }, [element("span", { className: "muted", text: "正在加载登录方式…" })]);
+  const backupKey = element("input", { type: "password", placeholder: "输入备用登录密钥", autocomplete: "off", spellcheck: false });
+  const backupLogin = button("使用密钥登录", () => run(async () => {
+    await message("auth:backup-key", { serverUrl: input.value, key: backupKey.value });
+    backupKey.value = "";
+    await refresh();
+  }), "secondary");
   const load = async () => { try { const result = await message("auth:providers", { serverUrl: input.value }); providers.replaceChildren(...result.providers.map((provider) => button(`使用 ${provider.name} 登录`, () => run(async () => { await message("auth:oauth", { serverUrl: input.value, provider: provider.id }); await refresh(); })))); } catch (error) { providers.replaceChildren(element("span", { className: "notice notice--error", text: error.message })); } };
-  render([element("header", { className: "app-header" }, [element("div", { className: "brand" }, [element("img", { className: "brand-mark", src: "../../icons/icon.svg", alt: "" }), element("div", { className: "brand-copy" }, [element("h1", { text: "Cookie Share Next" }), element("p", { text: "本地加密的账号切换器" })])])]), noticeNode(), element("section", { className: "panel" }, [element("label", { text: "服务器地址" }), input, button("加载登录方式", load), providers])]);
+  render([element("header", { className: "app-header" }, [element("div", { className: "brand" }, [element("img", { className: "brand-mark", src: "../../icons/icon.svg", alt: "" }), element("div", { className: "brand-copy" }, [element("h1", { text: "Cookie Share Next" }), element("p", { text: "本地加密的账号切换器" })])])]), noticeNode(), element("section", { className: "panel" }, [element("label", { text: "服务器地址" }), input, button("加载登录方式", load), providers, element("p", { className: "muted", text: "或使用在设置中生成的备用登录密钥" }), backupKey, backupLogin])]);
   load();
 }
 

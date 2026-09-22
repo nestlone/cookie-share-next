@@ -163,6 +163,7 @@ Base path: `/api/v1`
 | POST | `/auth/oauth/:provider/start` | `{mode, redirectUri}` | `200 {authorizeUrl}` |
 | GET | `/auth/oauth/:provider/callback` | provider query | `302` to extension redirect with a one-time code |
 | POST | `/auth/oauth/exchange` | `{code}` | `200 {token, user}` |
+| POST | `/auth/backup-key/exchange` | `{key}` | `200 {token, user}`; limited to 3 attempts per client IP per minute |
 | DELETE | `/auth/oauth/:provider` | — | `200 {providers}`; cannot remove the last provider |
 | POST | `/auth/logout` | — | `204` |
 | GET | `/health` | — | `200 {status:"ok"}` |
@@ -172,6 +173,14 @@ Base path: `/api/v1`
 | Method | Path | Response |
 |---|---|---|
 | GET | `/me` | `200 {user, usage}` |
+| POST | `/auth/backup-key/reset` | — | `200 {key}`; immediately revokes the previous key |
+
+### Backup-key requirements
+
+- The server generates the key with a cryptographically secure random source and returns its plaintext only from the reset endpoint.
+- Store only a one-way hash of the key. A reset atomically replaces that hash, so the old key stops working immediately.
+- Apply the three-attempts-per-minute limit to `/auth/backup-key/exchange`, keyed by the client IP after trusted-proxy processing. Do not apply it to successful authenticated reset requests.
+- A successful exchange issues the normal short-lived session token; the backup key is not retained by the extension.
 
 ### Buckets (authenticated)
 

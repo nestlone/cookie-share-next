@@ -22,6 +22,27 @@ function button(text, handler, className = "") {
   return node;
 }
 
+function showBackupKey(key) {
+  const keyInput = document.createElement("input");
+  keyInput.type = "text";
+  keyInput.value = key;
+  keyInput.readOnly = true;
+  keyInput.className = "backup-key";
+  const copy = button("复制密钥", async () => {
+    await navigator.clipboard.writeText(key);
+    copy.textContent = "已复制";
+  }, "secondary");
+  app.replaceChildren(
+    el("h1", "新的备用登录密钥"),
+    el("p", "请立即复制并妥善保存。关闭此页面后将无法再次查看，只能重新生成。", "error"),
+    keyInput,
+    copy,
+    button("我已保存，返回设置", () => render()),
+  );
+  keyInput.focus();
+  keyInput.select();
+}
+
 async function exportBucket(id) {
   const { content, filename } = await send("bucket:export", { id });
   const url = URL.createObjectURL(new Blob([content], { type: "application/json" }));
@@ -114,6 +135,17 @@ async function render() {
     await render();
   }, "danger");
 
+  const resetBackupKey = button("重置备用登录密钥", async () => {
+    if (!confirm("重置后，原备用登录密钥会立刻失效。是否继续？")) return;
+    try {
+      const result = await send("auth:backup-key:reset");
+      if (typeof result.key !== "string" || !result.key) throw new Error("服务器未返回新的备用登录密钥");
+      showBackupKey(result.key);
+    } catch (error) {
+      alert(`重置失败：${error.message}`);
+    }
+  }, "secondary");
+
   const importInput = document.createElement("input");
   importInput.type = "file";
   importInput.accept = ".json,application/json";
@@ -144,6 +176,9 @@ async function render() {
     importButton,
     importInput,
     el("p", "导入与导出必须先解锁；导入后会立即以当前总密码重新加密。", "muted"),
+    el("h2", "备用登录密钥"),
+    resetBackupKey,
+    el("p", "用于 GitHub、LinuxDo 等 OAuth 登录不可用时的备用登录。密钥仅会在重置后显示一次，旧密钥会立即失效。", "muted"),
     el("h2", "危险操作"),
     reset,
     el("p", "明文文件包含会话凭据，请妥善保存并在使用后删除。重置操作不可撤销，但不会退出服务器账号。", "muted"),

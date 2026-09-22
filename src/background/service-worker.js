@@ -6,6 +6,8 @@ import {
   listBuckets,
   logout,
   exchangeOAuth,
+  signInWithBackupKey,
+  resetBackupKey,
   getProviders,
   startOAuth,
   unlinkOAuth,
@@ -136,6 +138,14 @@ async function signIn(serverUrl, provider, mode = "login") {
   return response;
 }
 
+async function signInWithKey(serverUrl, key) {
+  if (typeof key !== "string" || !key.trim()) throw new Error("Backup key is required");
+  const response = await signInWithBackupKey(serverUrl, key.trim());
+  await saveSession({ serverUrl, displayName: response.user.displayName, token: response.token });
+  await clearKeyring();
+  return response;
+}
+
 async function currentSite() {
   const context = await activeSiteContext();
   if (context.hostname === "github.com") {
@@ -176,6 +186,14 @@ async function handleMessage(message) {
 
     case "auth:oauth":
       return await signIn(message.serverUrl, message.provider);
+
+    case "auth:backup-key":
+      return await signInWithKey(message.serverUrl, message.key);
+
+    case "auth:backup-key:reset": {
+      const settings = await requireSession();
+      return await resetBackupKey(settings.serverUrl, settings.token);
+    }
 
     case "auth:link": {
       const settings = await requireSession();
