@@ -97,7 +97,7 @@ operation throws. This is how the client verifies a bucket password is correct.
 - `bucketId` must match the server-side bucket ID (for verification on import).
 - `name` is encrypted inside the envelope — the server never sees it.
 - `cookies` is an array of normalized cookie objects (see Cookie Shape below).
-- `siteStorage` is optional same-origin Web Storage saved with the cookies. It is encrypted in the bucket and is needed by sites whose client-side login state is not fully represented by cookies. Older cookie-only buckets omit it and remain valid.
+- `siteStorage` is optional same-origin Web Storage saved with the cookies. It is encrypted in the bucket and is needed by sites whose client-side login state is not fully represented by cookies. Older cookie-only buckets omit it and remain valid; restoring one clears the current site's Web Storage so its previous account cannot leak into the cookie-only session.
 
 ## Bucket File (export/import container)
 

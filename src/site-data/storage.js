@@ -56,9 +56,12 @@ export async function captureSiteStorage(tabId, pageUrl) {
 }
 
 export async function replaceSiteStorage(tabId, pageUrl, siteStorage) {
-  if (!siteStorage) return;
-  const normalized = normalizeSiteStorage(siteStorage);
   const expectedOrigin = new URL(pageUrl).origin;
+  // Cookie-only buckets predate site storage. Clear current state for them so it
+  // cannot keep the account that was active before the Cookie switch.
+  const normalized = siteStorage
+    ? normalizeSiteStorage(siteStorage)
+    : { origin: expectedOrigin, localStorage: [], sessionStorage: [] };
   if (normalized.origin !== expectedOrigin) throw new Error("Saved local state belongs to a different website");
   const [injection] = await chrome.scripting.executeScript({
     target: { tabId },
