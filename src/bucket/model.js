@@ -1,4 +1,5 @@
 import { normalizeCookies } from "../cookies/normalize.js";
+import { normalizeSiteStorage } from "../site-data/storage.js";
 import { isBucketId } from "../shared/id.js";
 
 function timestamp() {
@@ -10,7 +11,7 @@ function normalizeSites(value) {
   return [...new Set(value.filter((site) => typeof site === "string" && /^[a-z0-9.-]+$/i.test(site)).map((site) => site.toLowerCase()))];
 }
 
-export function createBucketDocument(bucketId, name, cookies = [], sites = []) {
+export function createBucketDocument(bucketId, name, cookies = [], sites = [], siteStorage) {
   if (!isBucketId(bucketId)) {
     throw new Error("Invalid bucket ID");
   }
@@ -18,7 +19,7 @@ export function createBucketDocument(bucketId, name, cookies = [], sites = []) {
     throw new Error("Bucket name is required");
   }
   const now = timestamp();
-  return {
+  const document = {
     v: 1,
     bucketId,
     name: name.trim(),
@@ -27,6 +28,9 @@ export function createBucketDocument(bucketId, name, cookies = [], sites = []) {
     cookies: normalizeCookies(cookies),
     sites: normalizeSites(sites),
   };
+  const normalizedStorage = normalizeSiteStorage(siteStorage);
+  if (normalizedStorage) document.siteStorage = normalizedStorage;
+  return document;
 }
 
 export function validateBucketDocument(value, expectedId) {
@@ -39,7 +43,7 @@ export function validateBucketDocument(value, expectedId) {
   if (typeof value.name !== "string" || !value.name.trim() || !Array.isArray(value.cookies)) {
     throw new Error("Invalid decrypted bucket");
   }
-  return {
+  const document = {
     v: 1,
     bucketId: value.bucketId,
     name: value.name.trim(),
@@ -48,6 +52,9 @@ export function validateBucketDocument(value, expectedId) {
     cookies: normalizeCookies(value.cookies),
     sites: normalizeSites(value.sites),
   };
+  const normalizedStorage = normalizeSiteStorage(value.siteStorage);
+  if (normalizedStorage) document.siteStorage = normalizedStorage;
+  return document;
 }
 
 export function withCookies(bucket, cookies, sites = bucket.sites) {

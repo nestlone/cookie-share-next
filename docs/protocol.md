@@ -85,13 +85,19 @@ operation throws. This is how the client verifies a bucket password is correct.
   "updatedAt": "2026-01-01T00:00:00.000Z",
   "cookies": [
     { "domain": "example.com", "name": "session", "value": "abc", ... }
-  ]
+  ],
+  "siteStorage": {
+    "origin": "https://example.com",
+    "localStorage": [["key", "value"]],
+    "sessionStorage": [["key", "value"]]
+  }
 }
 ```
 
 - `bucketId` must match the server-side bucket ID (for verification on import).
 - `name` is encrypted inside the envelope — the server never sees it.
 - `cookies` is an array of normalized cookie objects (see Cookie Shape below).
+- `siteStorage` is optional same-origin Web Storage saved with the cookies. It is encrypted in the bucket and is needed by sites whose client-side login state is not fully represented by cookies. Older cookie-only buckets omit it and remain valid.
 
 ## Bucket File (export/import container)
 

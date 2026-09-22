@@ -14,6 +14,7 @@ import {
 } from "../src/crypto/keyring.js";
 import { createBucketId, isBucketId } from "../src/shared/id.js";
 import { normalizeCookie } from "../src/cookies/normalize.js";
+import { createBucketDocument, validateBucketDocument } from "../src/bucket/model.js";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const vectors = JSON.parse(
@@ -86,5 +87,15 @@ describe("extension crypto contract", () => {
     const cookie = normalizeCookie({ name: "__clerk_db_jwt", value: "value", domain: "suno.com", path: "/", httpOnly: true, secure: true, sameSite: "unspecified", partitionKey: { topLevelSite: "https://suno.com", hasCrossSiteAncestor: false } });
     expect(cookie).toMatchObject({ sameSite: "unspecified", partitionKey: { topLevelSite: "https://suno.com", hasCrossSiteAncestor: false } });
     expect(() => normalizeCookie({ ...cookie, partitionKey: { topLevelSite: "https://suno.com/path" } })).toThrow("Invalid cookie partitionKey");
+  });
+
+  it("stores same-origin local state while accepting older cookie-only buckets", () => {
+    const document = createBucketDocument("bucketOne", "Suno", [], ["suno.com"], {
+      origin: "https://suno.com",
+      localStorage: [["clerk", "state"]],
+      sessionStorage: [["current", "session"]],
+    });
+    expect(validateBucketDocument(document, "bucketOne").siteStorage).toEqual(document.siteStorage);
+    expect(validateBucketDocument({ ...document, siteStorage: undefined }, "bucketOne").siteStorage).toBeUndefined();
   });
 });

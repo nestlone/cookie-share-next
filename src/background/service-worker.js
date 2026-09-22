@@ -17,6 +17,7 @@ import { ApiError } from "../api/client.js";
 import { createBucketDocument, validateBucketDocument } from "../bucket/model.js";
 import { activeSiteContext, captureActiveTab } from "../cookies/capture.js";
 import { replaceCookiesForUrl } from "../cookies/apply.js";
+import { captureSiteStorage, replaceSiteStorage } from "../site-data/storage.js";
 import {
   clearBucketKey,
   clearKeyring,
@@ -273,7 +274,9 @@ async function handleMessage(message) {
       const site = await currentSite();
       const id = createBucketId();
       const name = typeof message.name === "string" && message.name.trim() ? message.name.trim() : site.accountName ? `${site.hostname} · ${site.accountName}` : site.hostname;
-      const document = createBucketDocument(id, name, await captureActiveTab(), [site.hostname]);
+      const cookies = await captureActiveTab();
+      const siteStorage = await captureSiteStorage(site.tabId, site.url);
+      const document = createBucketDocument(id, name, cookies, [site.hostname], siteStorage);
       const envelope = await createAndUnlockBucket(id, document);
       const bucket = await createBucket(settings.serverUrl, settings.token, id, envelope);
       await addDirectoryEntry(settings, document);
@@ -286,6 +289,7 @@ async function handleMessage(message) {
       const { document } = await openBucket(settings, message.id, message.legacyPassword);
       if (!document.sites.includes(site.hostname)) throw new Error("This account is not saved for the current website");
       const applied = await replaceCookiesForUrl(site.url, document.cookies);
+      await replaceSiteStorage(site.tabId, site.url, document.siteStorage);
       await chrome.tabs.reload(site.tabId);
       return { applied, document, site };
     }
@@ -342,6 +346,7 @@ async function handleMessage(message) {
             name: document.name,
             cookies: document.cookies,
             sites: document.sites,
+            ...(document.siteStorage ? { siteStorage: document.siteStorage } : {}),
           },
         }, null, 2),
         filename: `${document.name.replace(/[^a-z0-9._-]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 64) || message.id}.cookie-share.json`,
@@ -373,6 +378,7 @@ async function handleMessage(message) {
         typeof message.name === "string" && message.name.trim() ? message.name : source.name,
         source.cookies,
         Array.isArray(source.sites) && source.sites.length ? source.sites : source.cookies.map((cookie) => cookie.domain.replace(/^\./, "")),
+        source.siteStorage,
       );
       const envelope = await createAndUnlockBucket(id, document);
       try {

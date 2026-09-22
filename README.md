@@ -11,6 +11,7 @@ Cookie Share Next is a Manifest V3 browser extension for managing encrypted Cook
 - Use local GitHub page metadata, when available, to suggest an account name such as `github.com · octocat`.
 - Manage all encrypted buckets, import or export plaintext JSON backups, rename entries, and reset the vault from the separate Settings page.
 - Read and restore HTTPOnly Cookies where Chromium grants the extension access.
+- Save and restore same-origin local/session storage alongside cookies for sites that keep client-side authentication state.
 - Encrypt bucket contents and directory metadata locally before synchronization.
 - Import and export versioned plaintext JSON backups after unlocking the vault. Imported data is validated locally and re-encrypted before synchronization.
 - Sign in with GitHub, Google, or LinuxDo OAuth through a compatible backend.
