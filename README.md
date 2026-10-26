@@ -33,6 +33,8 @@ Use **Settings** for all-bucket management, renaming, and plaintext JSON import/
 
 ## Install the extension
 
+From version 0.0.14, the packaged public key matches the Chrome Web Store identity `lakmdllikmnehpebnphhemkcedkgkfpj`. Older unpacked releases used `kilogkcionjhdmmeafjogdhpoiocgaom`. These are separate browser extension identities: installing the new identity does not automatically migrate the old identity's local settings or unlock state. Existing encrypted server buckets remain accessible after signing in to the same service account and unlocking the vault. Self-hosted servers must allow the new ID in `ALLOWED_EXTENSION_IDS` for OAuth callbacks.
+
 This project currently ships as an unpacked native extension; no production bundle is required.
 
 1. Clone this repository and install test dependencies if needed.

@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Cookie Share Next",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "minimum_chrome_version": "132",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAylgyO0MiwZVUpDhRzYF5rw8pHPdYWXQqzVUC9aHBdLoERLCHjOnFZXUuOokkOLRq47FLP55RO6h/3BLPvc9ntMmXSQ7Fw1VmgZAKc+4gciH+0sUjCuN7YLBojhSh2AGCXb34oNIivb4fSSKXJ8T6+SvjpGmFJKVc5CNMbkwKMU96/kKl5eAf6EVAvUVNiynsua4el03QGJIuirf/F0siENM+ePpqovmEH/XuH2tZP+F1+qRD2AYR0pt/rbkXZlyt+2ro1oswI6HSR4z5QHhQL7m5VYKCUFXeI4pGZsvUFYKxsVnHorm21hy6JbnZSNd5oc+UYmC9kWSFLzxSQZ0WhQIDAQAB",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxNw28W+phcp+6EVcA4DREcJ9FSCgg0B4Z7kXB/SgDOyVXJuYzXS4nhNcNvyMqxoAP4JuQJGnXGO+46nodiSzi5s4nd1PHdU+q181ERRjr0ndlx0No95IdmUAzbO7Okl9wk0H/xXWeQL4FIXfbuAA7fC1m6kLhrCtlAGA95n12Xfa7Le+y8dl/6kPuYSvtSNfgOqG0DtnKrvhtOWKac+lOStJ/NI6CXfKqqAhDPSkxFE3BybwMCC2OlFf+ViGlyNJiWc1hmpy3b/9XvDjyx1bYJAPv/XIdIZ1++fpgMQCYUfyVMPnPdETcp7wzIFrj3anJo+Qr4oWFWIyoeE3FmqZuQIDAQAB",
   "description": "Zero-knowledge cookie buckets with client-side encryption.",
   "permissions": ["activeTab", "cookies", "storage", "downloads", "identity", "scripting"],
   "host_permissions": ["https://cookie.nestlone.com/*"],
