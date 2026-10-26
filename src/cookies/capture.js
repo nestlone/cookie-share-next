@@ -1,4 +1,5 @@
 import { normalizeCookies } from "./normalize.js";
+import { requireOrigins, siteOrigins } from "../shared/permissions.js";
 
 function cookieIdentity(cookie) {
   const partition = cookie.partitionKey ? `${cookie.partitionKey.topLevelSite ?? ""}:${String(cookie.partitionKey.hasCrossSiteAncestor ?? "")}` : "";
@@ -6,6 +7,7 @@ function cookieIdentity(cookie) {
 }
 
 export async function captureForUrl(url, tabId) {
+  await requireOrigins(siteOrigins(url));
   const { hostname } = new URL(url);
   const cookies = await chrome.cookies.getAll({ domain: hostname });
   if (typeof chrome.cookies.getPartitionKey !== "function" || tabId === undefined) return normalizeCookies(cookies);

@@ -42,7 +42,7 @@ This project currently ships as an unpacked native extension; no production bund
 5. Open the popup, keep `https://cookie.nestlone.com` or enter your self-hosted HTTPS origin, and sign in with an enabled OAuth provider.
 6. Unlock the vault with a strong, unique password and save an account from a website.
 
-The extension requests `cookies`, `storage`, `tabs`, `downloads`, `identity`, and `scripting`, plus host access to all URLs. `scripting` is used locally for supported-site account-name detection; no Cookie or credential plaintext is sent to the service. Review the source before installing it in a sensitive browser profile.
+The extension requests `activeTab`, `cookies`, `storage`, `downloads`, `identity`, and `scripting`. The only required host is the official API, `https://cookie.nestlone.com/*`. Website access is optional: saving or switching an account asks for the current hostname and its subdomains, without granting access to every site. A self-hosted API needs a separate grant through **Connect server and load sign-in methods**. Additional cookie hosts in older/imported accounts are listed for authorization before any current cookies are cleared. Denying a request cancels that operation. Access can be revoked through the browser's extension settings. `scripting` accesses same-origin Web Storage and supported-site account metadata locally. Review the source before installing it in a sensitive browser profile.
 
 ## Use a self-hosted backend
 

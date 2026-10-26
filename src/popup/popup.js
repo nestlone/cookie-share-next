@@ -1,4 +1,5 @@
 import { getSettings } from "../store/settings.js";
+import { requestOrigins, serverOrigins, siteOrigins } from "../shared/permissions.js";
 
 const app = document.querySelector("#app");
 let notice = null;
@@ -22,20 +23,21 @@ function renderLogin(settings) {
   const providers = element("div", { className: "provider-actions" }, [element("span", { className: "muted", text: "正在加载登录方式…" })]);
   const backupKey = element("input", { type: "password", placeholder: "输入备用登录密钥", autocomplete: "off", spellcheck: false });
   const backupLogin = button("使用密钥登录", () => run(async () => {
+    await requestOrigins(serverOrigins(input.value));
     await message("auth:backup-key", { serverUrl: input.value, key: backupKey.value });
     backupKey.value = "";
     await refresh();
   }), "secondary");
-  const load = async () => { try { const result = await message("auth:providers", { serverUrl: input.value }); providers.replaceChildren(...result.providers.map((provider) => button(`使用 ${provider.name} 登录`, () => run(async () => { await message("auth:oauth", { serverUrl: input.value, provider: provider.id }); await refresh(); })))); } catch (error) { providers.replaceChildren(element("span", { className: "notice notice--error", text: error.message })); } };
-  render([element("header", { className: "app-header" }, [element("div", { className: "brand" }, [element("img", { className: "brand-mark", src: "../../icons/icon.svg", alt: "" }), element("div", { className: "brand-copy" }, [element("h1", { text: "Cookie Share Next" }), element("p", { text: "本地加密的账号切换器" })])])]), noticeNode(), element("section", { className: "panel" }, [element("label", { text: "服务器地址" }), input, button("加载登录方式", load), providers, element("p", { className: "muted", text: "或使用在设置中生成的备用登录密钥" }), backupKey, backupLogin])]);
+  const load = async (authorize = false) => { try { if (authorize) await requestOrigins(serverOrigins(input.value)); const result = await message("auth:providers", { serverUrl: input.value }); providers.replaceChildren(...result.providers.map((provider) => button(`使用 ${provider.name} 登录`, () => run(async () => { await requestOrigins(serverOrigins(input.value)); await message("auth:oauth", { serverUrl: input.value, provider: provider.id }); await refresh(); })))); } catch (error) { providers.replaceChildren(element("span", { className: "notice notice--error", text: error.message })); } };
+  render([element("header", { className: "app-header" }, [element("div", { className: "brand" }, [element("img", { className: "brand-mark", src: "../../icons/icon.svg", alt: "" }), element("div", { className: "brand-copy" }, [element("h1", { text: "Cookie Share Next" }), element("p", { text: "本地加密的账号切换器" })])])]), noticeNode(), element("section", { className: "panel" }, [element("label", { text: "服务器地址" }), input, button("连接服务器并加载登录方式", () => load(true)), providers, element("p", { className: "muted", text: "自托管服务器需要单独授权访问。或使用在设置中生成的备用登录密钥" }), backupKey, backupLogin])]);
   load();
 }
 
-function accountRow(bucket) {
+function accountRow(bucket, site) {
   const label = bucket.name || "未命名账号";
   const editing = editingAccountId === bucket.id;
   const actions = [
-    button("切换", () => run(async () => { await ensureVaultUnlocked(); await message("site:switch", { id: bucket.id }); notice = { text: `已切换到 ${label}，页面正在刷新`, error: false }; await refresh(); })),
+    button("切换", () => run(async () => { await requestOrigins(siteOrigins(site.url)); await ensureVaultUnlocked(); await switchAccount(bucket, site); })),
     button(editing ? "收起" : "编辑", () => { editingAccountId = editing ? null : bucket.id; refresh(); }, "secondary compact"),
   ];
   const advanced = editing ? element("div", { className: "account-editor" }, [
@@ -45,11 +47,27 @@ function accountRow(bucket) {
   return element("article", { className: "account-row" }, [element("div", { className: "account-copy" }, [element("strong", { text: label }), element("span", { text: `更新于 ${new Date(bucket.updatedAt).toLocaleDateString()}` })]), element("div", { className: "account-actions" }, actions), advanced]);
 }
 
+async function switchAccount(bucket, site) {
+  const result = await message("site:switch", { id: bucket.id, tabId: site.tabId, url: site.url });
+  if (result.permissionRequired?.length) {
+    const origins = result.permissionRequired;
+    render([element("h2", { text: "此账号还需要访问以下网站" }),
+      element("p", { text: origins.join("\n"), className: "muted" }),
+      button("授权并继续切换", () => run(async () => {
+        await requestOrigins(origins);
+        await switchAccount(bucket, site);
+      })), button("取消", () => refresh(), "secondary")]);
+    return;
+  }
+  notice = { text: `已切换到 ${bucket.name || "所选账号"}，页面正在刷新`, error: false };
+  await refresh();
+}
+
 function renderCurrent(result, vault) {
   const { site, buckets, locked } = result;
   const suggested = site.accountName ? `${site.hostname} · ${site.accountName}` : site.hostname;
-  const save = button("保存当前账号", () => run(async () => { await ensureVaultUnlocked(); await message("site:save-current", { name: suggested }); notice = { text: `已保存 ${suggested}`, error: false }; await refresh(); }));
-  const body = locked ? element("section", { className: "empty-state" }, [element("h3", { text: "Cookie 桶已锁定" }), element("p", { text: "解锁后即可显示此网站的可用账号。" }), button("解锁并查看", () => run(async () => { await ensureVaultUnlocked(); await refresh(); }))]) : buckets.length ? element("section", { className: "account-list" }, buckets.map(accountRow)) : element("section", { className: "empty-state" }, [element("h3", { text: "此网站还没有已保存账号" }), element("p", { text: "保存当前登录状态，即可在这里一键切换。" })]);
+  const save = button("保存当前账号", () => run(async () => { await requestOrigins(siteOrigins(site.url)); await ensureVaultUnlocked(); await message("site:save-current", { name: suggested, tabId: site.tabId, url: site.url }); notice = { text: `已保存 ${suggested}`, error: false }; await refresh(); }));
+  const body = locked ? element("section", { className: "empty-state" }, [element("h3", { text: "Cookie 桶已锁定" }), element("p", { text: "解锁后即可显示此网站的可用账号。" }), button("解锁并查看", () => run(async () => { await ensureVaultUnlocked(); await refresh(); }))]) : buckets.length ? element("section", { className: "account-list" }, buckets.map((bucket) => accountRow(bucket, site))) : element("section", { className: "empty-state" }, [element("h3", { text: "此网站还没有已保存账号" }), element("p", { text: "保存当前登录状态，即可在这里一键切换。首次使用时仅申请当前网站及其子域名的访问权限。" })]);
   const lock = button(vault.unlocked ? "锁定" : "解锁", () => run(async () => { if (vault.unlocked) await message("vault:lock"); else await ensureVaultUnlocked(); await refresh(); }), "secondary compact");
   render([element("header", { className: "app-header" }, [element("div", { className: "brand" }, [icon(site), element("div", { className: "brand-copy" }, [element("h1", { text: site.hostname }), element("p", { text: site.accountName ? `当前识别为 ${site.accountName}` : "当前网站账号" })])]), element("div", { className: "header-actions" }, [lock, button("设置", () => chrome.runtime.openOptionsPage(), "secondary compact")])]), noticeNode(), save, element("div", { className: "section-title" }, [element("h2", { text: "可切换账号" }), element("span", { text: String(buckets.length) })]), body]);
 }

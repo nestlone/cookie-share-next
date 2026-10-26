@@ -15,7 +15,7 @@ import {
 } from "../api/endpoints.js";
 import { ApiError } from "../api/client.js";
 import { createBucketDocument, validateBucketDocument } from "../bucket/model.js";
-import { activeSiteContext, captureActiveTab } from "../cookies/capture.js";
+import { activeSiteContext, captureForUrl } from "../cookies/capture.js";
 import { replaceCookiesForUrl } from "../cookies/apply.js";
 import { captureSiteStorage, replaceSiteStorage } from "../site-data/storage.js";
 import {
@@ -31,6 +31,7 @@ import {
 } from "../crypto/keyring.js";
 import { createBucketId } from "../shared/id.js";
 import { clearSession, getSettings, saveSession } from "../store/settings.js";
+import { missingOrigins, requireOrigins, restoreOrigins, siteOrigins } from "../shared/permissions.js";
 
 const DIRECTORY_BUCKET_ID = "vaultindex";
 let directoryMutation = Promise.resolve();
@@ -180,6 +181,15 @@ async function openBucket(settings, id, legacyPassword) {
   return { bucket, document };
 }
 
+async function requestedSite(message) {
+  const site = await currentSite();
+  if (site.tabId !== message.tabId || site.url !== message.url) {
+    throw new Error("当前网页已改变，请重新打开扩展后重试。");
+  }
+  await requireOrigins(siteOrigins(site.url));
+  return site;
+}
+
 async function handleMessage(message) {
   switch (message.action) {
     case "auth:providers":
@@ -271,10 +281,10 @@ async function handleMessage(message) {
 
     case "site:save-current": {
       const settings = await requireSession();
-      const site = await currentSite();
+      const site = await requestedSite(message);
       const id = createBucketId();
       const name = typeof message.name === "string" && message.name.trim() ? message.name.trim() : site.accountName ? `${site.hostname} · ${site.accountName}` : site.hostname;
-      const cookies = await captureActiveTab();
+      const cookies = await captureForUrl(site.url, site.tabId);
       const siteStorage = await captureSiteStorage(site.tabId, site.url);
       const document = createBucketDocument(id, name, cookies, [site.hostname], siteStorage);
       const envelope = await createAndUnlockBucket(id, document);
@@ -285,9 +295,13 @@ async function handleMessage(message) {
 
     case "site:switch": {
       const settings = await requireSession();
-      const site = await currentSite();
+      const site = await requestedSite(message);
       const { document } = await openBucket(settings, message.id, message.legacyPassword);
       if (!document.sites.includes(site.hostname)) throw new Error("This account is not saved for the current website");
+      // Imported/older buckets can contain additional hosts. Check all grants
+      // before clearing any current cookies; never silently restore a subset.
+      const permissionRequired = await missingOrigins(restoreOrigins(site.url, document.cookies));
+      if (permissionRequired.length) return { permissionRequired };
       const applied = await replaceCookiesForUrl(site.url, document.cookies);
       await replaceSiteStorage(site.tabId, site.url, document.siteStorage);
       await chrome.tabs.reload(site.tabId);

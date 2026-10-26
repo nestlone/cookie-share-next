@@ -32,7 +32,7 @@ Cookie Share Next 是一个 Manifest V3 浏览器扩展，用于在**有权使�
 5. 打开扩展弹窗，保留 `https://cookie.nestlone.com`，或填写自部署后端的 HTTPS 地址；使用已配置的 OAuth 提供商登录。
 6. 创建 Cookie 桶并设置高强度、唯一的桶密码。
 
-扩展申请 `cookies`、`storage`、`tabs`、`downloads`、`identity` 和所有站点的 host 权限，用于读取、存储、恢复 Cookie 桶和完成登录。在敏感浏览器配置文件中安装前，请先审查源码。
+扩展申请 `activeTab`、`cookies`、`storage`、`downloads`、`identity` 和 `scripting`，默认主机权限仅为官方后端 `https://cookie.nestlone.com/*`。首次保存或切换时，单独申请当前主机及其子域名的访问权限；自托管后端通过“连接服务器并加载登录方式”单独授权。旧账号或导入账号若包含其他 Cookie 域名，会先列出域名并等待授权，拒绝后不会清除当前登录状态。可在浏览器扩展设置中撤销访问权限。在敏感浏览器配置文件中安装前，请先审查源码。
 
 ## 使用自部署后端
 

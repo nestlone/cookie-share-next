@@ -1,3 +1,5 @@
+import { requireOrigins, serverOrigins } from "../shared/permissions.js";
+
 export class ApiError extends Error {
   constructor(status, message, body = null) {
     super(message);
@@ -25,6 +27,7 @@ export class ApiClient {
   }
 
   async request(path, options = {}) {
+    await requireOrigins(serverOrigins(this.serverUrl));
     const headers = new Headers(options.headers);
     headers.set("Accept", "application/json");
     if (this.token) {
