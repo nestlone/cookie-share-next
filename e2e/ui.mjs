@@ -24,17 +24,25 @@ const failures = [];
 async function pageFor(state = {}) {
   const page = await browser.newPage({ viewport: { width: 1100, height: 850 } });
   page.on("pageerror", error => failures.push(error.message));
-  await page.addInitScript(({ base, version, state }) => {
+  await page.addInitScript(({ base, version, state, optionalHosts }) => {
     const local = { cookieShareNextSettings: { serverUrl: "https://cookie.nestlone.com" } };
     const session = state.token ? { cookieShareNextSession: { token: "mock-session", displayName: "测试账户" } } : {};
-    window.testState = { calls: [], opened: [], ...state };
+    window.testState = { calls: [], opened: [], permissions: [], ...state };
     window.close = () => {};
     const storage = data => ({ get: async key => ({ [key]: data[key] }), set: async values => Object.assign(data, values), remove: async key => { delete data[key]; } });
     const providerList = [{ id: "github", name: "GitHub" }, { id: "linuxdo", name: "LinuxDo" }];
     const profile = () => ({ user: { id: 1, displayName: "测试账户", hasLoginKey: state.hasLoginKey ?? true, providers: state.providers ?? [], quotaBytes: 10485760 }, usage: { usedBytes: 1024, todayRequests: 3, todayRequestsLimit: 1000 } });
     const api = {
       storage: { local: storage(local), session: storage(session) },
-      permissions: { contains: async () => true, request: async () => true },
+      permissions: { contains: async () => true, request: async ({ origins }) => {
+        for (const origin of origins) {
+          if (!optionalHosts.includes(`${origin.split("://")[0]}://*/*`)) {
+            throw new Error("Only permissions specified in the manifest may be requested.");
+          }
+        }
+        window.testState.permissions.push(origins);
+        return !state.denyPermissions;
+      } },
       tabs: { create: async value => window.testState.opened.push(value) },
       downloads: { download: async () => 1 },
       runtime: { getManifest: () => ({ version }), getURL: value => base + "/" + value, sendMessage: (message, callback) => {
@@ -49,8 +57,9 @@ async function pageFor(state = {}) {
         if (message.action === "bucket:list") data = { buckets: [] };
         if (message.action === "site:buckets") {
           if (state.failSite) { callback({ ok: false, error: "网络连接中断", status: 0 }); return; }
-          data = { site: { hostname: "example.com", url: "https://example.com/", tabId: 7 }, buckets: [], locked: false };
+          data = { site: { hostname: "example.com", url: "https://example.com/", tabId: 7 }, buckets: state.buckets ?? [], locked: false };
         }
+        if (message.action === "site:switch") data = {};
         if (message.action === "auth:key:register" || message.action === "auth:backup-key:reset") data = { key: "K".repeat(43) };
         if (message.action === "auth:link" && state.linkConflict) { callback({ ok: false, error: "这个第三方账号已绑定到其他账户，不能重复绑定或合并。" }); return; }
         callback({ ok: true, data });
@@ -58,7 +67,7 @@ async function pageFor(state = {}) {
     };
     Object.assign(window.chrome ?? (window.chrome = {}), api);
     window.fetch = async () => new Response(JSON.stringify({ providers: providerList }), { headers: { "Content-Type": "application/json" } });
-  }, { base, version: manifest.version, state });
+  }, { base, version: manifest.version, state, optionalHosts: manifest.optional_host_permissions });
   return page;
 }
 
@@ -109,6 +118,22 @@ try {
   await expect(network.getByRole("button", { name: "使用密钥登录" })).toHaveCount(0);
   expect(await network.evaluate(() => window.testState.calls.some(call => call.action === "auth:session:clear"))).toBe(false);
 
+  const accounts = await pageFor({ token: true, buckets: [{ id: "test-account", name: "测试账号", updatedAt: "2026-11-21T00:00:00Z" }] });
+  await accounts.goto(base + "/src/popup/popup.html");
+  await accounts.getByRole("button", { name: "保存当前账号", exact: true }).click();
+  await expect(accounts.getByRole("alert")).toContainText("当前账号已加密保存");
+  await accounts.getByRole("button", { name: "切换", exact: true }).click();
+  await expect(accounts.getByRole("alert")).toContainText("网页正在刷新");
+  expect(await accounts.evaluate(() => window.testState.permissions)).toEqual([
+    ["https://*.example.com/*", "http://*.example.com/*"],
+    ["https://*.example.com/*", "http://*.example.com/*"],
+  ]);
+  const denied = await pageFor({ token: true, denyPermissions: true });
+  await denied.goto(base + "/src/popup/popup.html");
+  await denied.getByRole("button", { name: "保存当前账号", exact: true }).click();
+  await expect(denied.getByRole("alert")).toContainText("操作已取消");
+  expect(await denied.evaluate(() => window.testState.calls.some(call => call.action === "site:save-current"))).toBe(false);
+
   const settings = await pageFor();
   await settings.goto(base + "/src/options/server.html");
   await expect(settings.getByRole("textbox", { name: "服务器地址" })).toBeVisible();
@@ -117,5 +142,5 @@ try {
   await settings.setViewportSize({ width: 390, height: 844 });
   expect(await settings.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(failures).toEqual([]);
-  console.log("Browser UI: login recovery, visible version, hidden server fields, separate one-time key page, real settings navigation, binding conflicts, last-login protection and network-state preservation passed.");
+  console.log("Browser UI: save/switch permission schemes and denial, login recovery, hidden server fields, one-time key page, separate settings, binding conflicts and session preservation passed (mocked extension APIs).");
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }

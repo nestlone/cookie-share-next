@@ -3,6 +3,7 @@ import { missingOrigins, requestOrigins, restoreOrigins, serverOrigins, siteOrig
 import { replaceCookiesForUrl } from "../src/cookies/apply.js";
 import { captureForUrl } from "../src/cookies/capture.js";
 import { ApiClient } from "../src/api/client.js";
+import { readFileSync } from "node:fs";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -10,9 +11,9 @@ const cookie = { name: "session", value: "test", domain: "auth.example.com", pat
 
 describe("optional host authorization", () => {
   it("limits website patterns to the selected hostname and its descendants", () => {
-    expect(siteOrigins("https://app.example.co.uk/page")).toEqual(["*://*.app.example.co.uk/*"]);
-    expect(siteOrigins("http://127.0.0.1:3000/")).toEqual(["*://127.0.0.1/*"]);
-    expect(siteOrigins("http://[::1]:3000/")).toEqual(["*://[::1]/*"]);
+    expect(siteOrigins("https://app.example.co.uk/page")).toEqual(["https://*.app.example.co.uk/*", "http://*.app.example.co.uk/*"]);
+    expect(siteOrigins("http://127.0.0.1:3000/")).toEqual(["https://127.0.0.1/*", "http://127.0.0.1/*"]);
+    expect(siteOrigins("http://[::1]:3000/")).toEqual(["https://[::1]/*", "http://[::1]/*"]);
     expect(() => siteOrigins("chrome://settings")).toThrow();
   });
 
@@ -24,8 +25,27 @@ describe("optional host authorization", () => {
 
   it("preflights every restored cookie host, including older multi-domain buckets", () => {
     expect(restoreOrigins("https://example.com", [cookie])).toEqual([
-      "*://*.example.com/*", "https://auth.example.com/*",
+      "https://*.example.com/*", "http://*.example.com/*", "https://auth.example.com/*",
     ]);
+  });
+
+  it("requests site and restored-cookie schemes individually covered by the manifest", async () => {
+    const manifest = JSON.parse(readFileSync(new URL("../manifest.json", import.meta.url), "utf8"));
+    const request = vi.fn(async ({ origins }) => {
+      for (const origin of origins) {
+        const scheme = origin.split("://")[0];
+        if (!manifest.optional_host_permissions.includes(`${scheme}://*/*`)) {
+          throw new Error("Only permissions specified in the manifest may be requested.");
+        }
+      }
+      return true;
+    });
+    vi.stubGlobal("chrome", { permissions: { request } });
+    for (const url of ["https://suno.com/create", "http://example.com", "http://localhost:3000", "http://[::1]:3000"]) {
+      const origins = restoreOrigins(url, [cookie, { ...cookie, secure: false }]);
+      await expect(requestOrigins(origins)).resolves.toBeUndefined();
+    }
+    await expect(requestOrigins(["*://*.suno.com/*"])).rejects.toThrow("Only permissions specified");
   });
 
   it("invokes the permission request synchronously and handles rejection", async () => {

@@ -12,7 +12,10 @@ export function siteOrigins(value) {
   if (!/^https?:$/.test(url.protocol)) throw new Error("请在普通 HTTP 或 HTTPS 网页使用此功能");
   const host = url.hostname;
   const isAddress = host.includes(":") || /^[\d.]+$/.test(host) || host === "localhost";
-  return [`*://${isAddress ? host : `*.${host}`}/*`];
+  const patternHost = isAddress ? host : `*.${host}`;
+  // Chromium checks each requested pattern against an individual declaration.
+  // Keep schemes separate, matching optional_host_permissions in manifest.json.
+  return [`https://${patternHost}/*`, `http://${patternHost}/*`];
 }
 
 export function restoreOrigins(value, cookies) {
