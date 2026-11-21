@@ -30,6 +30,12 @@ Login keys are separate from the vault password. Save your key securely: without
 
 ## Daily use and vault reset
 
+The popup keeps server configuration out of the login and account views. Change it under **Settings → Server settings**, including before signing in. Accounts, backups, security, and server settings each have their own HTML page. Changing servers ends the current session; data stays on the original server.
+
+Under **Security settings**, key accounts and OAuth accounts can link available providers. Each provider identity belongs to one account, and each account can link at most one identity per provider. Linking does not merge accounts. The last OAuth provider can only be removed when a login key exists. Creating or resetting a key opens a separate page with copy/download actions and a saved-key confirmation; refreshing never repeats creation or rotation.
+
+Server reads have an eight-second timeout per attempt and retry once on network errors or HTTP 502/503/504. Writes are never automatically retried. Network failures preserve the session and show a retry action; only a confirmed expired session clears the login.
+
 Open the extension on an HTTP(S) page, unlock the vault, and select **Save current account**. The popup then shows only accounts associated with that site. **Switch** removes the current site's Cookies, restores the selected encrypted account, and refreshes the active tab.
 
 Use **Settings** for all-bucket management, renaming, and plaintext JSON import/export. These backup actions require the vault to be unlocked; imports are immediately encrypted with the current vault password before upload. **Delete all encrypted data and reset vault password** is a destructive operation: it requires typing `DELETE`, permanently removes every encrypted bucket from the server, locks the vault, and lets you choose a new vault password the next time you save an account. It does not delete your server sign-in account.
@@ -44,14 +50,14 @@ This project currently ships as an unpacked native extension; no production bund
 2. Open the Chrome or Edge extensions page.
 3. Enable **Developer mode**.
 4. Select **Load unpacked** and choose this repository directory (`frontend/` in the local workspace).
-5. Open the popup, keep `https://cookie.nestlone.com` or enter your self-hosted HTTPS origin, and sign in with an enabled OAuth provider.
+5. Open the popup and create a key account, enter an existing key, or select an enabled OAuth provider. To change the default service, open **Settings → Server settings** first.
 6. Unlock the vault with a strong, unique password and save an account from a website.
 
-The extension requests `activeTab`, `cookies`, `storage`, `downloads`, `identity`, and `scripting`. The only required host is the official API, `https://cookie.nestlone.com/*`. Website access is optional: saving or switching an account asks for the current hostname and its subdomains, without granting access to every site. A self-hosted API needs a separate grant through **Connect server and load sign-in methods**. Additional cookie hosts in older/imported accounts are listed for authorization before any current cookies are cleared. Denying a request cancels that operation. Access can be revoked through the browser's extension settings. `scripting` accesses same-origin Web Storage and supported-site account metadata locally. Review the source before installing it in a sensitive browser profile.
+The extension requests `activeTab`, `cookies`, `storage`, `downloads`, `identity`, and `scripting`. The only required host is the official API, `https://cookie.nestlone.com/*`. Website access is optional: saving or switching an account asks for the current hostname and its subdomains, without granting access to every site. A self-hosted API needs a separate grant through **Test connection and save** in server settings. Additional cookie hosts in older/imported accounts are listed for authorization before any current cookies are cleared. Denying a request cancels that operation. Access can be revoked through the browser's extension settings. `scripting` accesses same-origin Web Storage and supported-site account metadata locally. Review the source before installing it in a sensitive browser profile.
 
 ## Use a self-hosted backend
 
-The backend is maintained in a separate repository: [cookie-share-next-server](https://github.com/nestlone/cookie-share-next-server). Deploy it behind HTTPS, configure at least one OAuth provider, and use its public origin in the extension.
+The backend is maintained in a separate repository: [cookie-share-next-server](https://github.com/nestlone/cookie-share-next-server). Deploy it behind HTTPS and enter its public origin in server settings. OAuth providers are optional for standalone key accounts.
 
 The frontend and backend deliberately maintain their own copies of the protocol fixtures and documentation. When changing the protocol, update both repositories and verify their respective contract tests.
 
@@ -62,6 +68,7 @@ Requirements: Node.js 22.5 or newer.
 ```bash
 npm ci
 npm test
+npm run test:ui # Isolated local Edge browser with mocked extension APIs
 node -e "JSON.parse(require('node:fs').readFileSync('manifest.json'));"
 ```
 

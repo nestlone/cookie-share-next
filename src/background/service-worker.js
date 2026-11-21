@@ -131,8 +131,14 @@ async function signIn(serverUrl, provider, mode = "login") {
   const resultUrl = await chrome.identity.launchWebAuthFlow({ url: started.authorizeUrl, interactive: true });
   const result = new URL(resultUrl);
   const error = result.searchParams.get("error");
-  if (error) throw new Error(`OAuth sign-in failed: ${error}`);
-  if (mode === "link") return { linked: result.searchParams.get("linked") === "1" };
+  if (error) {
+    const messages = { provider_already_linked: "这个第三方账号已绑定到其他账户，不能重复绑定或合并。", provider_type_already_linked: "当前账户已绑定这个登录提供商，请先解绑后再更换。", provider_denied: "你取消了第三方授权。", provider_exchange_failed: "第三方验证失败，请稍后重新授权。" };
+    throw new Error(messages[error] ?? `第三方登录失败：${error}`);
+  }
+  if (mode === "link") {
+    if (result.searchParams.get("linked") !== "1") throw new Error("未收到绑定成功确认，请重试。");
+    return { linked: true };
+  }
   const code = result.searchParams.get("code");
   if (!code) throw new Error("OAuth sign-in did not return an exchange code");
   const response = await exchangeOAuth(serverUrl, code);
@@ -241,6 +247,11 @@ async function handleMessage(message) {
       const settings = await requireSession();
       return await getMe(settings.serverUrl, settings.token);
     }
+
+    case "auth:session:clear":
+      await clearSession();
+      await clearKeyring();
+      return null;
 
     case "vault:status":
       return { unlocked: await hasVaultPassword() };
@@ -425,6 +436,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   handleMessage(message)
     .then((data) => sendResponse({ ok: true, data }))
-    .catch((error) => sendResponse({ ok: false, error: errorMessage(error) }));
+    .catch((error) => sendResponse({ ok: false, error: errorMessage(error), status: error instanceof ApiError ? error.status : undefined, retryAfter: error instanceof ApiError ? error.body?.retryAfter : undefined }));
   return true;
 });
