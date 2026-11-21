@@ -11,9 +11,12 @@ Cookie Share Next 是一个 Manifest V3 浏览器扩展，用于在**有权使�
 - 每个桶使用独立密码在扩展本地加密后再同步。
 - 导出或导入加密的 `.csn-bucket.json` 文件，实现基于文件的分享。
 - 通过兼容后端使用 GitHub、Google 或 LinuxDo OAuth 登录。
+- 点击“创建密钥账户”即可注册，无需第三方账号；复制系统随机生成的密钥并确认已保存，之后输入密钥即可登录。
 - 可使用官方服务 `https://cookie.nestlone.com`，也可连接兼容的自部署后端。
 
 ## 安全与隐私
+
+登录密钥只在创建或重置时显示一次，服务端仅保存哈希。密钥不同于 Cookie 桶总密码；未绑定其他登录方式时，退出后丢失密钥将无法找回账户。仍在登录时可在设置中重置，旧密钥会立即失效。每个 IP 每分钟可尝试密钥登录 20 次、创建账户 5 次，触发限流后显示具体等待秒数。
 
 桶密码独立于账号登录，且永不离开扩展。扩展使用 PBKDF2-SHA256 在本地派生 AES-256-GCM 密钥；服务端只保存不透明的加密信封、桶 ID、密文大小和时间戳。
 
@@ -29,14 +32,14 @@ Cookie Share Next 是一个 Manifest V3 浏览器扩展，用于在**有权使�
 2. 打开 Chrome 或 Edge 的扩展管理页面。
 3. 启用**开发者模式**。
 4. 点击**加载已解压的扩展程序**，选择本仓库目录（本地工作区中的 `frontend/`）。
-5. 打开扩展弹窗，保留 `https://cookie.nestlone.com`，或填写自部署后端的 HTTPS 地址；使用已配置的 OAuth 提供商登录。
+5. 打开扩展弹窗，保留 `https://cookie.nestlone.com`，或填写自部署后端的 HTTPS 地址；选择 OAuth 登录、创建密钥账户或输入已有密钥登录。
 6. 创建 Cookie 桶并设置高强度、唯一的桶密码。
 
 扩展申请 `activeTab`、`cookies`、`storage`、`downloads`、`identity` 和 `scripting`，默认主机权限仅为官方后端 `https://cookie.nestlone.com/*`。首次保存或切换时，单独申请当前主机及其子域名的访问权限；自托管后端通过“连接服务器并加载登录方式”单独授权。旧账号或导入账号若包含其他 Cookie 域名，会先列出域名并等待授权，拒绝后不会清除当前登录状态。可在浏览器扩展设置中撤销访问权限。在敏感浏览器配置文件中安装前，请先审查源码。
 
 ## 使用自部署后端
 
-后端在独立仓库维护：[cookie-share-next-server](https://github.com/nestlone/cookie-share-next-server)。请将其部署在 HTTPS 之后，配置至少一个 OAuth 提供商，并在扩展中使用该公开服务地址。
+后端在独立仓库维护：[cookie-share-next-server](https://github.com/nestlone/cookie-share-next-server)。请将其部署在 HTTPS 之后，并在扩展中使用该公开服务地址。密钥账户无需配置 OAuth；如需第三方登录，可另外配置 OAuth 提供商。
 
 前端与后端有意分别维护协议测试向量和文档副本。修改协议时，必须同步更新两个仓库并运行各自的契约测试。
 

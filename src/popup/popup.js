@@ -18,10 +18,40 @@ async function run(operation) { try { notice = null; await operation(); } catch 
 async function ensureVaultUnlocked() { if ((await message("vault:status")).unlocked) return; const password = prompt("输入总密码以解锁 Cookie 桶"); if (!password) throw new Error("需要先解锁 Cookie 桶"); await message("vault:unlock", { password }); }
 function icon(site) { return site.favIconUrl ? element("img", { className: "site-icon", src: site.favIconUrl, alt: "" }) : element("span", { className: "site-icon site-icon--fallback", text: site.hostname[0]?.toUpperCase() ?? "?" }); }
 
+function renderCreatedKey(key) {
+  if (typeof key !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(key)) throw new Error("服务器未返回有效密钥，请在设置中重置登录密钥。");
+  const input = element("input", { type: "text", value: key, readonly: true, "aria-label": "登录密钥", spellcheck: false });
+  const feedback = element("p", { className: "muted", role: "status" });
+  const copy = button("复制密钥", async () => {
+    try { await navigator.clipboard.writeText(key); feedback.textContent = "密钥已复制，请保存到安全的位置。"; }
+    catch { input.focus(); input.select(); feedback.textContent = "自动复制失败，请手动复制上方密钥。"; }
+  }, "secondary");
+  const saved = element("input", { type: "checkbox" });
+  const proceed = button("我已保存，开始使用", () => { input.value = ""; key = ""; refresh(); });
+  proceed.disabled = true;
+  saved.addEventListener("change", () => { proceed.disabled = !saved.checked; });
+  render([element("section", { className: "panel" }, [
+    element("h2", { text: "密钥账户已创建" }),
+    element("p", { text: "请立即保存登录密钥：它只在此处显示一次，关闭弹窗后无法再次查看。" }),
+    input, copy, feedback,
+    element("p", { className: "muted", text: "密钥用于登录账户，不是 Cookie 桶的总密码。未绑定其他登录方式时，退出后丢失密钥将无法找回账户；仍在登录时可在设置中重置密钥。" }),
+    element("label", {}, [saved, document.createTextNode(" 我已妥善保存密钥")]), proceed,
+  ])]);
+}
+
 function renderLogin(settings) {
   const input = element("input", { type: "url", value: settings.serverUrl || "https://cookie.nestlone.com", placeholder: "https://server.example" });
   const providers = element("div", { className: "provider-actions" }, [element("span", { className: "muted", text: "正在加载登录方式…" })]);
-  const backupKey = element("input", { type: "password", placeholder: "输入备用登录密钥", autocomplete: "off", spellcheck: false });
+  const backupKey = element("input", { type: "password", placeholder: "输入登录密钥", autocomplete: "off", spellcheck: false });
+  const create = button("创建密钥账户", () => run(async () => {
+    if (create.disabled) return;
+    create.disabled = true;
+    try {
+      await requestOrigins(serverOrigins(input.value));
+      const result = await message("auth:key:register", { serverUrl: input.value });
+      renderCreatedKey(result.key);
+    } finally { create.disabled = false; }
+  }));
   const backupLogin = button("使用密钥登录", () => run(async () => {
     await requestOrigins(serverOrigins(input.value));
     await message("auth:backup-key", { serverUrl: input.value, key: backupKey.value });
@@ -29,7 +59,7 @@ function renderLogin(settings) {
     await refresh();
   }), "secondary");
   const load = async (authorize = false) => { try { if (authorize) await requestOrigins(serverOrigins(input.value)); const result = await message("auth:providers", { serverUrl: input.value }); providers.replaceChildren(...result.providers.map((provider) => button(`使用 ${provider.name} 登录`, () => run(async () => { await requestOrigins(serverOrigins(input.value)); await message("auth:oauth", { serverUrl: input.value, provider: provider.id }); await refresh(); })))); } catch (error) { providers.replaceChildren(element("span", { className: "notice notice--error", text: error.message })); } };
-  render([element("header", { className: "app-header" }, [element("div", { className: "brand" }, [element("img", { className: "brand-mark", src: "../../icons/icon.svg", alt: "" }), element("div", { className: "brand-copy" }, [element("h1", { text: "Cookie Share Next" }), element("p", { text: "本地加密的账号切换器" })])])]), noticeNode(), element("section", { className: "panel" }, [element("label", { text: "服务器地址" }), input, button("连接服务器并加载登录方式", () => load(true)), providers, element("p", { className: "muted", text: "自托管服务器需要单独授权访问。或使用在设置中生成的备用登录密钥" }), backupKey, backupLogin])]);
+  render([element("header", { className: "app-header" }, [element("div", { className: "brand" }, [element("img", { className: "brand-mark", src: "../../icons/icon.svg", alt: "" }), element("div", { className: "brand-copy" }, [element("h1", { text: "Cookie Share Next" }), element("p", { text: "本地加密的账号切换器" })])])]), noticeNode(), element("section", { className: "panel" }, [element("label", { text: "服务器地址" }), input, button("连接服务器并加载登录方式", () => load(true)), providers, create, element("p", { className: "muted", text: "无需第三方账号，点击即可创建密钥账户。已有密钥可直接登录；自托管服务器需要单独授权访问。" }), backupKey, backupLogin])]);
   load();
 }
 

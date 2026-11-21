@@ -73,6 +73,7 @@ input {
 }
 
 input::placeholder { color: var(--subtle); }
+input[type="checkbox"] { width: 16px; min-height: 16px; padding: 0; vertical-align: middle; accent-color: var(--primary); }
 label { color: var(--muted); font-size: 12px; font-weight: 650; }
 
 #app { display: grid; gap: 12px; padding: 16px; }

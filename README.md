@@ -15,6 +15,7 @@ Cookie Share Next is a Manifest V3 browser extension for managing encrypted Cook
 - Encrypt bucket contents and directory metadata locally before synchronization.
 - Import and export versioned plaintext JSON backups after unlocking the vault. Imported data is validated locally and re-encrypted before synchronization.
 - Sign in with GitHub, Google, or LinuxDo OAuth through a compatible backend.
+- Create a standalone key account with one click. Copy the generated login key and confirm it is saved; it is shown only once. Existing keys can be entered directly to sign in.
 - Use the official service at `https://cookie.nestlone.com` or a compatible self-hosted backend.
 
 ## Security and privacy
@@ -24,6 +25,8 @@ A vault password is independent of account authentication and never leaves the e
 Operators can observe account identities, bucket counts, approximate ciphertext sizes, and request timing. They cannot decrypt bucket names, Cookie domains, Cookie values, or bucket passwords from stored data. Email addresses reported by different OAuth providers are never merged automatically. See the complete [protocol and threat model](docs/protocol.md).
 
 The sign-in token is held in `chrome.storage.session`, not persistent extension storage. Closing the browser ends the extension session and requires signing in again. Plaintext exports contain active session credentials: store them only where you trust the storage, and delete them after use.
+
+Login keys are separate from the vault password. Save your key securely: without a linked OAuth provider, a lost key after signing out means losing access. While signed in, rotate the login key in Settings; the old key stops working immediately. The server stores only key hashes. Key login allows 20 attempts per IP per minute, and account creation allows 5; rate-limit errors show the remaining wait in seconds.
 
 ## Daily use and vault reset
 

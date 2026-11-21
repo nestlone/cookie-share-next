@@ -33,7 +33,7 @@ function showBackupKey(key) {
     copy.textContent = "已复制";
   }, "secondary");
   app.replaceChildren(
-    el("h1", "新的备用登录密钥"),
+    el("h1", "新的登录密钥"),
     el("p", "请立即复制并妥善保存。关闭此页面后将无法再次查看，只能重新生成。", "error"),
     keyInput,
     copy,
@@ -135,11 +135,11 @@ async function render() {
     await render();
   }, "danger");
 
-  const resetBackupKey = button("重置备用登录密钥", async () => {
-    if (!confirm("重置后，原备用登录密钥会立刻失效。是否继续？")) return;
+  const resetBackupKey = button("重置登录密钥", async () => {
+    if (!confirm("重置后，原登录密钥会立刻失效。是否继续？")) return;
     try {
       const result = await send("auth:backup-key:reset");
-      if (typeof result.key !== "string" || !result.key) throw new Error("服务器未返回新的备用登录密钥");
+      if (typeof result.key !== "string" || !result.key) throw new Error("服务器未返回新的登录密钥");
       showBackupKey(result.key);
     } catch (error) {
       alert(`重置失败：${error.message}`);
@@ -176,9 +176,9 @@ async function render() {
     importButton,
     importInput,
     el("p", "导入与导出必须先解锁；导入后会立即以当前总密码重新加密。", "muted"),
-    el("h2", "备用登录密钥"),
+    el("h2", "登录密钥"),
     resetBackupKey,
-    el("p", "用于 GitHub、LinuxDo 等 OAuth 登录不可用时的备用登录。密钥仅会在重置后显示一次，旧密钥会立即失效。", "muted"),
+    el("p", "支持独立密钥账户，也可作为 GitHub、LinuxDo 等登录方式的备用凭据。新密钥仅在创建或重置后显示一次，重置后旧密钥立即失效。", "muted"),
     el("h2", "危险操作"),
     reset,
     el("p", "明文文件包含会话凭据，请妥善保存并在使用后删除。重置操作不可撤销，但不会退出服务器账号。", "muted"),

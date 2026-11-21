@@ -7,6 +7,7 @@ import {
   logout,
   exchangeOAuth,
   signInWithBackupKey,
+  registerKeyAccount,
   resetBackupKey,
   getProviders,
   startOAuth,
@@ -200,6 +201,13 @@ async function handleMessage(message) {
 
     case "auth:backup-key":
       return await signInWithKey(message.serverUrl, message.key);
+
+    case "auth:key:register": {
+      const response = await registerKeyAccount(message.serverUrl);
+      await saveSession({ serverUrl: message.serverUrl, displayName: response.user.displayName, token: response.token });
+      await clearKeyring();
+      return { key: response.key };
+    }
 
     case "auth:backup-key:reset": {
       const settings = await requireSession();

@@ -55,6 +55,13 @@ export class ApiClient {
     }
 
     if (!response.ok) {
+      if (response.status === 429) {
+        const retryAfter = Number(body?.retryAfter ?? response.headers.get("Retry-After"));
+        const message = Number.isFinite(retryAfter) && retryAfter > 0
+          ? `操作过于频繁，请在 ${Math.ceil(retryAfter)} 秒后重试。`
+          : "操作过于频繁，请稍后重试。";
+        throw new ApiError(response.status, message, body);
+      }
       const message = body && typeof body.message === "string" ? body.message : "Request failed";
       throw new ApiError(response.status, message, body);
     }
